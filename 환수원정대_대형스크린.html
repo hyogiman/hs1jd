@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>환수 원정대 · 대형 스크린</title>
+<style>
+:root{--bg:#0e1526;--panel:#182238;--line:#2c3b5c;--ink:#eef3fb;--sub:#8fa3c4;--gold:#f2b441;--glow:#7fe3d4;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Pretendard','Malgun Gothic',sans-serif;background:radial-gradient(ellipse at 50% 0%,#1c2c4a 0%,var(--bg) 60%);color:var(--ink);min-height:100vh;overflow:hidden;}
+.mode{display:none;min-height:100vh;flex-direction:column;align-items:center;justify-content:center;padding:4vh 5vw;}
+.mode.on{display:flex;}
+h1{font-size:3rem;font-weight:800;margin-bottom:.6rem;text-shadow:0 0 30px rgba(242,180,65,.35);}
+.eyebrow{letter-spacing:.5em;font-size:1rem;color:var(--gold);margin-bottom:1rem;opacity:.85;}
+/* 리더보드 */
+.board{width:min(860px,92vw);}
+.brow{display:flex;align-items:center;gap:18px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 22px;margin:10px 0;font-size:1.5rem;animation:in .4s ease;}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+.brow .rk{width:70px;font-weight:900;color:var(--gold);font-size:1.7rem;}
+.brow:nth-child(1) .rk{font-size:2.1rem;}
+.brow .nm{flex:1;font-weight:700;}
+.brow .sc{font-weight:800;color:var(--gold);}
+.ticker{position:fixed;bottom:0;left:0;right:0;background:#0009;border-top:1px solid var(--line);padding:14px 24px;font-size:1.3rem;white-space:nowrap;overflow:hidden;}
+/* 치유 코드 */
+.qr-frame{background:#fff;border-radius:26px;padding:24px;box-shadow:0 0 0 6px rgba(127,227,212,.25),0 20px 60px rgba(0,0,0,.5);}
+.code{font-family:'Consolas',monospace;font-size:6rem;font-weight:800;letter-spacing:.32em;color:#fff;text-shadow:0 0 26px rgba(127,227,212,.6);padding-left:.32em;margin-top:1.6rem;}
+.bar{width:min(560px,70vw);height:12px;border-radius:99px;background:#ffffff20;overflow:hidden;margin-top:1.6rem;}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--glow),#3fb8c4);}
+.hint{margin-top:.8rem;color:var(--sub);font-size:1.1rem;}
+.closed{font-size:2rem;color:var(--sub);margin-top:2rem;}
+</style>
+</head>
+<body>
+<section class="mode on" id="m-leaderboard">
+  <div class="eyebrow">MONSTER EXPEDITION</div>
+  <h1>🏆 실시간 순위</h1>
+  <div class="board" id="board"></div>
+</section>
+<section class="mode" id="m-heal">
+  <div class="eyebrow">HEALING SPRING</div>
+  <h1>💧 치유의 샘</h1>
+  <div id="healBody"></div>
+</section>
+<div class="ticker" id="ticker">환수 원정대에 오신 것을 환영합니다!</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+<script>
+const FIREBASE_CONFIG = {
+  /* ★ 동일한 Firebase 설정 붙여넣기 ★ */
+  apiKey:"", authDomain:"", databaseURL:"", projectId:"", storageBucket:"", messagingSenderId:"", appId:""
+};
+const PERIOD=15;
+const $=s=>document.querySelector(s);
+if(!FIREBASE_CONFIG.apiKey){document.body.innerHTML='<div style="padding:60px;text-align:center;font-size:1.4rem;">FIREBASE_CONFIG를 파일 상단에 입력하세요</div>';}
+else{
+firebase.initializeApp(FIREBASE_CONFIG);
+const DB=firebase.database();
+firebase.auth().signInAnonymously();
+let MODE="leaderboard", HEAL_OPEN=false;
+DB.ref("screen/mode").on("value",s=>{MODE=s.val()||"leaderboard";applyMode();});
+DB.ref("stations/heal/open").on("value",s=>{HEAL_OPEN=!!s.val();renderHealFrame();});
+function applyMode(){
+  document.querySelectorAll(".mode").forEach(m=>m.classList.remove("on"));
+  const el=$("#m-"+MODE)||$("#m-leaderboard");el.classList.add("on");
+  if(MODE==="heal")renderHealFrame();
+}
+/* 리더보드 */
+DB.ref("players").on("value",s=>{
+  const P=s.val()||{};
+  const rows=Object.values(P).map(p=>({name:p.name||"?",score:p.score||0}))
+    .sort((a,b)=>b.score-a.score).slice(0,10);
+  const medal=["🥇","🥈","🥉"];
+  $("#board").innerHTML=rows.map((p,i)=>`
+    <div class="brow"><div class="rk">${medal[i]||(i+1)+"위"}</div>
+    <div class="nm">${p.name}</div><div class="sc">${p.score}점</div></div>`).join("")
+    ||'<div style="color:var(--sub);font-size:1.3rem;">참가자를 기다리는 중…</div>';
+});
+/* 피드 티커 */
+let feedQ=[];
+DB.ref("feed").limitToLast(8).on("child_added",s=>{
+  const v=s.val();if(!v||!v.msg)return;
+  feedQ.push(v.msg.replace(/<[^>]+>/g,""));
+  if(feedQ.length>8)feedQ.shift();
+  $("#ticker").innerHTML="📢 "+feedQ.slice().reverse().join(" &nbsp;·&nbsp; ");
+});
+/* 치유 코드 — 이 화면이 코드 생성기: 15초마다 새 코드를 DB에 기록 */
+let lastWin=-1,qr=null;
+function renderHealFrame(){
+  if(MODE!=="heal")return;
+  if(!HEAL_OPEN){$("#healBody").innerHTML='<div class="closed">⛔ 지금은 닫혀 있습니다<br><small style="font-size:1.1rem;">관리자 콘솔에서 "샘 열기"를 누르면 코드가 표시됩니다</small></div>';qr=null;return;}
+  $("#healBody").innerHTML=`
+    <div class="qr-frame"><canvas id="qrc"></canvas></div>
+    <div class="code" id="codeTxt">------</div>
+    <div class="bar"><i id="barI"></i></div>
+    <div class="hint">기절한 환수를 데려오세요 · 앱에 이 코드를 입력하면 복습 퀴즈가 시작됩니다 (<b id="secT">15</b>초마다 갱신)</div>`;
+  qr=new QRious({element:document.getElementById("qrc"),size:280,level:"M",foreground:"#0e1526"});
+  lastWin=-1;
+}
+function tick(){
+  if(MODE==="heal"&&HEAL_OPEN&&qr){
+    const now=Math.floor(Date.now()/1000);
+    const win=Math.floor(now/PERIOD);
+    const remain=PERIOD-(now%PERIOD);
+    if(win!==lastWin){
+      lastWin=win;
+      const code=String(100000+Math.floor(Math.random()*900000));
+      DB.ref("stations/heal").update({prevCode:window._curCode||null,code,win,ts:Date.now()});
+      window._curCode=code;
+      $("#codeTxt").textContent=code;
+      qr.value=JSON.stringify({t:"heal",c:code});
+    }
+    $("#barI").style.width=(remain/PERIOD*100)+"%";
+    $("#secT").textContent=remain;
+  }
+  requestAnimationFrame(()=>setTimeout(tick,200));
+}
+tick();
+}
+</script>
+</body>
+</html>

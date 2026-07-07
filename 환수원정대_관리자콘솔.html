@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>환수 원정대 · 관리자 콘솔</title>
+<style>
+:root{--bg:#0e1526;--panel:#182238;--panel2:#1f2c47;--line:#2c3b5c;--ink:#eef3fb;--sub:#8fa3c4;--gold:#f2b441;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Pretendard','Malgun Gothic',sans-serif;background:var(--bg);color:var(--ink);padding:20px;max-width:1100px;margin:0 auto;}
+h1{font-size:1.3rem;margin-bottom:4px;}h1 small{color:var(--gold);font-size:.7rem;letter-spacing:.25em;display:block;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-top:14px;}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;}
+.card h3{font-size:.95rem;color:var(--gold);margin-bottom:10px;}
+button{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px 14px;cursor:pointer;font-family:inherit;font-size:.85rem;margin:3px 3px 3px 0;}
+button.gold{background:linear-gradient(135deg,#f2b441,#e8823e);color:#2b1a05;border:none;font-weight:700;}
+button.red{background:#5c2430;border-color:#e05252;}
+button.on{border-color:var(--gold);color:var(--gold);font-weight:700;}
+input,textarea,select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px;font-family:inherit;font-size:.85rem;width:100%;margin:3px 0;}
+textarea{min-height:110px;font-family:'Consolas',monospace;font-size:.78rem;}
+table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:6px;}
+th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;}
+th{color:var(--sub);font-weight:600;}
+.stat{font-size:.78rem;color:var(--sub);margin:4px 0;}
+.tag{font-size:.68rem;padding:2px 8px;border-radius:99px;background:var(--panel2);color:var(--sub);margin-left:6px;}
+.qitem{border-bottom:1px solid var(--line);padding:8px 2px;font-size:.8rem;display:flex;gap:8px;align-items:flex-start;}
+.qitem .qq{flex:1;}
+.gate{max-width:360px;margin:120px auto;text-align:center;}
+#app{display:none;}
+.row2{display:flex;gap:6px;}
+.log{font-size:.74rem;color:var(--sub);max-height:120px;overflow-y:auto;margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="gate" id="gate">
+  <h1>🛠️ 관리자 콘솔</h1>
+  <p style="color:var(--sub);font-size:.85rem;margin:10px 0;">관리자 암호를 입력하세요</p>
+  <input id="passIn" type="password" placeholder="암호">
+  <button class="gold" style="width:100%;margin-top:8px;" id="passGo">입장</button>
+</div>
+
+<div id="app">
+<h1>🛠️ 환수 원정대 관리자 콘솔 <small>MONSTER EXPEDITION ADMIN</small></h1>
+<div class="grid">
+  <div class="card">
+    <h3>🎮 게임 라운드 제어</h3>
+    <div id="phaseBtns">
+      <button data-ph="lobby">⏳ 대기</button>
+      <button data-ph="round1">🌲 1라운드 (사파리)</button>
+      <button data-ph="round2">⚔️ 2라운드 (배틀)</button>
+      <button data-ph="ended" class="red">🏁 게임 종료</button>
+      <button data-ph="free">🧪 자유 모드</button>
+    </div>
+    <div class="row2" style="margin-top:8px;">
+      <input id="timerMin" type="number" placeholder="타이머(분)" style="width:120px;">
+      <button id="timerSet">타이머 시작</button>
+      <button id="timerClear">타이머 해제</button>
+    </div>
+    <div class="stat" id="phaseStat">현재: -</div>
+    <h3 style="margin-top:14px;">🖥️ 대형 스크린 모드</h3>
+    <button data-sc="leaderboard">🏆 리더보드</button>
+    <button data-sc="heal">💧 치유의 샘 코드</button>
+    <h3 style="margin-top:14px;">💧 치유의 샘</h3>
+    <button id="healOpen" class="gold">샘 열기</button>
+    <button id="healClose" class="red">샘 닫기</button>
+    <span class="stat" id="healStat"></span>
+  </div>
+
+  <div class="card">
+    <h3>📣 공지 발송 (전원 피드)</h3>
+    <input id="noticeIn" placeholder="예: ⚡ 5분 후 2라운드가 시작됩니다!">
+    <button class="gold" id="noticeGo">발송</button>
+    <h3 style="margin-top:14px;">🖼️ 환수 이미지 일괄 업로드</h3>
+    <div class="stat">파일명 규칙: 001.png ~ 151.png (번호로 자동 매칭 → Storage 업로드 → 전원 앱 자동 반영)</div>
+    <input id="imgFiles" type="file" multiple accept="image/*">
+    <button class="gold" id="imgGo">업로드 시작</button>
+    <div class="log" id="imgLog"></div>
+  </div>
+
+  <div class="card" style="grid-column:1/-1;">
+    <h3>👥 참가자 모니터링 <span class="tag" id="pCount"></span></h3>
+    <table><thead><tr><th>이름</th><th>점수</th><th>보유</th><th>기절</th><th>도감</th><th>관리</th></tr></thead>
+    <tbody id="pTable"></tbody></table>
+  </div>
+
+  <div class="card" style="grid-column:1/-1;">
+    <h3>❓ 문제은행 관리 <span class="tag" id="qCount"></span></h3>
+    <div class="row2">
+      <button class="gold" id="qUploadDefault">기본 60문항 업로드 (앱 내장분)</button>
+      <button id="qExport">전체 내보내기(복사)</button>
+      <button class="red" id="qClear">전체 삭제</button>
+    </div>
+    <div style="margin:10px 0;">
+      <b style="font-size:.85rem;">문항 추가</b>
+      <input id="qQ" placeholder="문제">
+      <div class="row2"><input id="qC0" placeholder="보기1 (정답)"><input id="qC1" placeholder="보기2"></div>
+      <div class="row2"><input id="qC2" placeholder="보기3"><input id="qC3" placeholder="보기4"></div>
+      <div class="row2">
+        <select id="qD" style="width:160px;"><option value="easy">쉬움(C/B)</option><option value="mid">중간(A)</option><option value="hard">어려움(S)</option></select>
+        <button class="gold" id="qAdd">추가</button>
+      </div>
+      <div class="stat">※ 보기1 칸에 정답을 넣으세요. 앱에서 보기 순서는 자동 셔플됩니다.</div>
+    </div>
+    <div>
+      <b style="font-size:.85rem;">JSON 일괄 업로드</b>
+      <textarea id="qBulk" placeholder='[{"id":"q901","question":"...","choices":["정답","오답","오답","오답"],"answer":0,"difficulty":"easy","category":"직무"}]'></textarea>
+      <button id="qBulkGo">일괄 업로드</button>
+    </div>
+    <div id="qList" style="margin-top:10px;max-height:340px;overflow-y:auto;"></div>
+  </div>
+</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script>
+const FIREBASE_CONFIG = {
+  /* ★ 참가자 앱과 동일한 Firebase 설정 붙여넣기 ★ */
+  apiKey:"", authDomain:"", databaseURL:"", projectId:"", storageBucket:"", messagingSenderId:"", appId:""
+};
+const ADMIN_PASS = "hwansu2026"; /* ★ 원하는 암호로 변경 ★ */
+const DEFAULT_QUIZ = [{"id":"q001","question":"태양계에서 가장 큰 행성은?","choices":["토성","목성","천왕성","해왕성"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q002","question":"물의 화학식으로 옳은 것은?","choices":["H₂O","CO₂","O₃","NaCl"],"answer":0,"difficulty":"easy","category":"일반상식"},{"id":"q003","question":"훈민정음을 창제한 조선의 왕은?","choices":["태종","세조","세종","성종"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q004","question":"세계에서 가장 넓은 대양은?","choices":["대서양","인도양","태평양","북극해"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q005","question":"빛의 삼원색에 해당하지 않는 색은?","choices":["빨강","초록","파랑","노랑"],"answer":3,"difficulty":"easy","category":"일반상식"},{"id":"q006","question":"올림픽 오륜기에 있는 원의 개수는?","choices":["4개","5개","6개","7개"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q007","question":"지구에서 가장 가까운 '별(항성)'은?","choices":["달","북극성","태양","시리우스"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q008","question":"표준 피아노의 건반 수는?","choices":["76개","88개","92개","100개"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q009","question":"축구 경기에서 한 팀의 출전 인원은?","choices":["9명","10명","11명","12명"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q010","question":"대한민국을 상징하는 나라꽃은?","choices":["진달래","개나리","무궁화","목련"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q011","question":"에펠탑이 있는 도시는?","choices":["런던","로마","베를린","파리"],"answer":3,"difficulty":"easy","category":"일반상식"},{"id":"q012","question":"『동의보감』을 편찬한 조선의 의학자는?","choices":["허준","이제마","장영실","정약용"],"answer":0,"difficulty":"easy","category":"일반상식"},{"id":"q013","question":"1년 중 낮이 가장 긴 절기는?","choices":["춘분","하지","추분","동지"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q014","question":"대한민국 국회의원의 임기는?","choices":["2년","4년","5년","6년"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q015","question":"무지개 색깔은 통상 몇 가지로 표현되는가?","choices":["5가지","6가지","7가지","8가지"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q016","question":"현존하는 세계에서 가장 오래된 금속활자 인쇄본은?","choices":["직지심체요절","팔만대장경","무구정광대다라니경","훈민정음 해례본"],"answer":0,"difficulty":"easy","category":"일반상식"},{"id":"q017","question":"식물의 광합성에 필요한 재료가 아닌 것은?","choices":["이산화탄소","물","빛","산소"],"answer":3,"difficulty":"easy","category":"일반상식"},{"id":"q018","question":"남한에서 가장 긴 강은?","choices":["한강","낙동강","금강","영산강"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q019","question":"베토벤 교향곡 9번의 별칭은?","choices":["운명","전원","합창","영웅"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q020","question":"컴퓨터의 CPU를 우리말로 풀면?","choices":["중앙처리장치","주기억장치","보조기억장치","그래픽처리장치"],"answer":0,"difficulty":"easy","category":"일반상식"},{"id":"q021","question":"태극기의 4괘(건곤감리)에 속하지 않는 것은?","choices":["건(乾)","곤(坤)","태(兌)","리(離)"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q022","question":"세계 최초로 종두법(천연두 백신)을 개발한 인물은?","choices":["파스퇴르","에드워드 제너","플레밍","코흐"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q023","question":"소리가 가장 빠르게 전달되는 매질은?","choices":["공기","물","철","진공"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q024","question":"지진이 방출한 에너지의 크기를 나타내는 용어는?","choices":["진도","규모","진폭","주기"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q025","question":"대한민국 수도권에 포함되지 않는 도시는?","choices":["서울","인천","수원","대전"],"answer":3,"difficulty":"easy","category":"일반상식"},{"id":"q026","question":"사랑니를 포함한 사람의 영구치 개수는?","choices":["28개","30개","32개","34개"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q027","question":"세계에서 인구가 가장 많은 대륙은?","choices":["아프리카","아시아","유럽","아메리카"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q028","question":"조선을 건국한 첫 번째 왕은?","choices":["태조","정종","태종","세종"],"answer":0,"difficulty":"easy","category":"일반상식"},{"id":"q029","question":"1기압에서 물이 어는 섭씨 온도는?","choices":["-4도","0도","4도","10도"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q030","question":"대한민국 만 원권 지폐에 그려진 인물은?","choices":["이순신","세종대왕","신사임당","퇴계 이황"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q031","question":"다음 중 대한민국의 국경일이 아닌 날은?","choices":["한글날","광복절","개천절","식목일"],"answer":3,"difficulty":"easy","category":"일반상식"},{"id":"q032","question":"바다에 접하지 않은 대한민국의 도(道)는?","choices":["강원특별자치도","충청북도","전라남도","경상남도"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q033","question":"화재 발생 시 대한민국의 신고 번호는?","choices":["112","114","119","120"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q034","question":"지구의 유일한 자연 위성은?","choices":["달","화성","금성","혜성"],"answer":0,"difficulty":"easy","category":"일반상식"},{"id":"q035","question":"세계 대륙 중 면적이 가장 작은 대륙은?","choices":["유럽","남극","오세아니아","남아메리카"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q036","question":"'보이지 않는 손'이라는 개념을 주창한 경제학자는?","choices":["케인스","애덤 스미스","마르크스","슘페터"],"answer":1,"difficulty":"mid","category":"일반상식"},{"id":"q037","question":"인체에서 가장 큰 장기(기관)는?","choices":["간","폐","뇌","피부"],"answer":3,"difficulty":"mid","category":"일반상식"},{"id":"q038","question":"세계에서 국토 면적이 두 번째로 넓은 나라는?","choices":["중국","미국","캐나다","브라질"],"answer":2,"difficulty":"mid","category":"일반상식"},{"id":"q039","question":"'전체 결과의 80%가 20%의 원인에서 나온다'는 법칙은?","choices":["파레토 법칙","머피의 법칙","무어의 법칙","피터의 법칙"],"answer":0,"difficulty":"mid","category":"일반상식"},{"id":"q040","question":"대한민국 최초의 노벨상 수상자는?","choices":["김대중","이휘소","황순원","한강"],"answer":0,"difficulty":"mid","category":"일반상식"},{"id":"q041","question":"조선왕조실록이 등재된 유네스코 유산 분류는?","choices":["세계문화유산","세계기록유산","인류무형문화유산","세계자연유산"],"answer":1,"difficulty":"mid","category":"일반상식"},{"id":"q042","question":"빛이 1년 동안 나아가는 거리를 나타내는 단위는?","choices":["광년","파섹","천문단위","해리"],"answer":0,"difficulty":"mid","category":"일반상식"},{"id":"q043","question":"삼권분립의 삼권에 해당하지 않는 것은?","choices":["입법","행정","사법","언론"],"answer":3,"difficulty":"mid","category":"일반상식"},{"id":"q044","question":"GDP의 우리말 명칭은?","choices":["국민총생산","국내총생산","국민순소득","국내순투자"],"answer":1,"difficulty":"mid","category":"일반상식"},{"id":"q045","question":"높은 산 위에서 물의 끓는점은 어떻게 되는가?","choices":["높아진다","낮아진다","변화 없다","끓지 않는다"],"answer":1,"difficulty":"mid","category":"일반상식"},{"id":"q046","question":"바이올린족 현악기 중 가장 크고 낮은 음역의 악기는?","choices":["비올라","첼로","더블베이스","하프"],"answer":2,"difficulty":"mid","category":"일반상식"},{"id":"q047","question":"현재 전승되는 판소리 다섯 마당에 속하지 않는 것은?","choices":["심청가","수궁가","적벽가","배비장타령"],"answer":3,"difficulty":"mid","category":"일반상식"},{"id":"q048","question":"강한 경쟁자의 등장이 조직 전체에 활력을 불어넣는 현상은?","choices":["메기 효과","낙수 효과","분수 효과","기저 효과"],"answer":0,"difficulty":"mid","category":"일반상식"},{"id":"q049","question":"사람 몸에서 뼈가 가장 많이 모여 있는 부위는?","choices":["손","척추","두개골","골반"],"answer":0,"difficulty":"mid","category":"일반상식"},{"id":"q050","question":"OEM의 의미로 옳은 것은?","choices":["주문자 상표 부착 생산","자체 브랜드 개발 생산","기술 이전 생산","공동 연구 개발"],"answer":0,"difficulty":"mid","category":"일반상식"},{"id":"q051","question":"'넛지(Nudge)' 개념으로 노벨경제학상을 수상한 학자는?","choices":["대니얼 카너먼","리처드 세일러","게리 베커","폴 크루그먼"],"answer":1,"difficulty":"hard","category":"일반상식"},{"id":"q052","question":"국보 훈민정음 해례본(간송본)을 소장한 곳은?","choices":["국립중앙박물관","규장각","간송미술관","국립한글박물관"],"answer":2,"difficulty":"hard","category":"일반상식"},{"id":"q053","question":"플라시보 효과의 반대로, 부정적 믿음이 실제 악영향을 주는 현상은?","choices":["노시보 효과","피그말리온 효과","호손 효과","바넘 효과"],"answer":0,"difficulty":"hard","category":"일반상식"},{"id":"q054","question":"인간이 안정적으로 관계를 유지할 수 있는 집단 크기의 한계로 제시된 '던바의 수'는?","choices":["약 50명","약 150명","약 300명","약 500명"],"answer":1,"difficulty":"hard","category":"일반상식"},{"id":"q055","question":"1건의 중대사고 뒤에 29건의 경미한 사고, 300건의 징후가 있다는 법칙은?","choices":["하인리히 법칙","깨진 유리창 법칙","파킨슨 법칙","그레셤 법칙"],"answer":0,"difficulty":"hard","category":"일반상식"},{"id":"q056","question":"대한민국 애국가를 작곡한 인물은?","choices":["홍난파","안익태","윤이상","현제명"],"answer":1,"difficulty":"hard","category":"일반상식"},{"id":"q057","question":"'냉혹한 현실을 직시하되 최후의 승리를 확신하라'는 스톡데일 패러독스의 유래는?","choices":["2차대전 노르망디 상륙작전","베트남전 포로 생활","아폴로 13호 사고","섀클턴 남극 탐험"],"answer":1,"difficulty":"hard","category":"일반상식"},{"id":"q058","question":"'몰입(Flow)' 이론을 정립한 심리학자는?","choices":["미하이 칙센트미하이","에이브러햄 매슬로","마틴 셀리그만","캐럴 드웩"],"answer":0,"difficulty":"hard","category":"일반상식"},{"id":"q059","question":"예측 불가능한 극단적 사건을 뜻하는 『블랙 스완』의 저자는?","choices":["말콤 글래드웰","나심 니콜라스 탈레브","유발 하라리","짐 콜린스"],"answer":1,"difficulty":"hard","category":"일반상식"},{"id":"q060","question":"유럽에서 가장 오래된 대학으로 꼽히는 곳은?","choices":["옥스퍼드 대학","파리 대학","볼로냐 대학","살라망카 대학"],"answer":2,"difficulty":"hard","category":"일반상식"}];
+const HP_MAP = {"001":30,"002":50,"003":75,"004":30,"005":50,"006":105,"007":30,"008":50,"009":30,"010":50,"011":30,"012":50,"013":50,"014":75,"015":50,"016":75,"017":75,"018":105,"019":50,"020":75,"021":105,"022":30,"023":50,"024":75,"025":30,"026":50,"027":105,"028":30,"029":50,"030":30,"031":50,"032":30,"033":50,"034":50,"035":75,"036":50,"037":75,"038":75,"039":105,"040":50,"041":75,"042":105,"043":30,"044":50,"045":75,"046":30,"047":50,"048":105,"049":30,"050":50,"051":30,"052":50,"053":30,"054":50,"055":50,"056":75,"057":50,"058":75,"059":75,"060":105,"061":50,"062":75,"063":105,"064":30,"065":50,"066":75,"067":30,"068":50,"069":105,"070":30,"071":50,"072":30,"073":50,"074":30,"075":50,"076":50,"077":75,"078":50,"079":75,"080":75,"081":105,"082":50,"083":75,"084":105,"085":30,"086":50,"087":75,"088":30,"089":50,"090":105,"091":30,"092":50,"093":30,"094":50,"095":30,"096":50,"097":50,"098":75,"099":50,"100":75,"101":75,"102":105,"103":50,"104":75,"105":105,"106":30,"107":50,"108":75,"109":30,"110":50,"111":105,"112":30,"113":50,"114":30,"115":50,"116":30,"117":50,"118":50,"119":75,"120":50,"121":75,"122":75,"123":105,"124":50,"125":75,"126":105,"127":30,"128":50,"129":75,"130":30,"131":50,"132":105,"133":30,"134":50,"135":30,"136":50,"137":30,"138":50,"139":50,"140":75,"141":50,"142":75,"143":75,"144":105,"145":50,"146":75,"147":105,"148":105,"149":105,"150":105,"151":105};
+
+const $=s=>document.querySelector(s);
+$("#passGo").addEventListener("click",()=>{
+  if($("#passIn").value!==ADMIN_PASS){alert("암호가 다릅니다");return;}
+  $("#gate").style.display="none";$("#app").style.display="block";boot();
+});
+$("#passIn").addEventListener("keydown",e=>{if(e.key==="Enter")$("#passGo").click();});
+
+let DB=null,ST=null;
+function boot(){
+  if(!FIREBASE_CONFIG.apiKey){alert("FIREBASE_CONFIG를 파일 상단에 입력하세요");return;}
+  firebase.initializeApp(FIREBASE_CONFIG);
+  DB=firebase.database();ST=firebase.storage();
+  firebase.auth().signInAnonymously();
+  DB.ref("game/state").on("value",s=>{
+    const v=s.val()||{};
+    $("#phaseStat").textContent="현재: "+(v.phase||"-")+(v.timerEnd?` · 타이머 ${new Date(v.timerEnd).toLocaleTimeString()}`:"");
+    document.querySelectorAll("#phaseBtns button").forEach(b=>b.classList.toggle("on",b.dataset.ph===v.phase));
+  });
+  DB.ref("stations/heal").on("value",s=>{
+    const v=s.val()||{};
+    $("#healStat").textContent=v.open?`열림 · 현재코드 ${v.code||"-"}`:"닫힘";
+  });
+  DB.ref("players").on("value",s=>{
+    const P=s.val()||{};const rows=Object.entries(P).map(([uid,p])=>({uid,...p}));
+    rows.sort((a,b)=>(b.score||0)-(a.score||0));
+    $("#pCount").textContent=rows.length+"명";
+    $("#pTable").innerHTML=rows.map(p=>{
+      const coll=p.collection||[];const faint=coll.filter(c=>c.hp<=0).length;
+      return `<tr><td>${p.name||"?"}</td><td>${p.score||0}</td><td>${coll.length}</td>
+      <td>${faint?`<span style="color:#ff8a8a">${faint}</span>`:0}</td><td>${(p.dex||[]).length}</td>
+      <td><button data-a="heal" data-u="${p.uid}">전체회복</button>
+      <button data-a="p10" data-u="${p.uid}">+10점</button>
+      <button data-a="m10" data-u="${p.uid}">-10점</button>
+      <button class="red" data-a="del" data-u="${p.uid}">삭제</button></td></tr>`;}).join("");
+    $("#pTable").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>playerAction(b.dataset.a,b.dataset.u)));
+  });
+  DB.ref("quizzes").on("value",s=>{
+    const Q=s.val()||{};const arr=Object.entries(Q);
+    $("#qCount").textContent=arr.length+"문항"+(arr.length?"":" — 비어있음(앱은 내장 60문항 사용)");
+    $("#qList").innerHTML=arr.map(([k,q])=>`
+      <div class="qitem"><div class="qq"><b>[${q.difficulty}]</b> ${q.question}
+      <div style="color:var(--sub);font-size:.72rem;">정답: ${q.choices?q.choices[q.answer]:"?"}</div></div>
+      <button class="red" data-k="${k}">삭제</button></div>`).join("");
+    $("#qList").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>DB.ref("quizzes/"+b.dataset.k).remove()));
+  });
+}
+document.querySelectorAll("#phaseBtns button").forEach(b=>{
+  b.addEventListener("click",()=>DB.ref("game/state/phase").set(b.dataset.ph));
+});
+$("#timerSet").addEventListener("click",()=>{
+  const m=+$("#timerMin").value;if(!m)return;
+  DB.ref("game/state/timerEnd").set(Date.now()+m*60000);
+});
+$("#timerClear").addEventListener("click",()=>DB.ref("game/state/timerEnd").set(0));
+document.querySelectorAll("[data-sc]").forEach(b=>{
+  b.addEventListener("click",()=>{DB.ref("screen/mode").set(b.dataset.sc);alert("스크린 모드: "+b.dataset.sc);});
+});
+$("#healOpen").addEventListener("click",()=>DB.ref("stations/heal/open").set(true));
+$("#healClose").addEventListener("click",()=>DB.ref("stations/heal/open").set(false));
+$("#noticeGo").addEventListener("click",()=>{
+  const v=$("#noticeIn").value.trim();if(!v)return;
+  DB.ref("feed").push({msg:"📣 "+v,ts:firebase.database.ServerValue.TIMESTAMP});
+  $("#noticeIn").value="";
+});
+async function playerAction(a,uid){
+  const ref=DB.ref("players/"+uid);
+  if(a==="del"){if(confirm("이 참가자를 삭제할까요?"))ref.remove();return;}
+  const snap=await ref.get();const p=snap.val();if(!p)return;
+  if(a==="heal"){
+    /* 환수별 최대 HP 맵으로 정확 회복 */
+    const coll=(p.collection||[]).map(c=>({...c,hp:HP_MAP[c.monsterId]||100}));
+    ref.child("collection").set(coll);
+  }
+  if(a==="p10")ref.child("score").set((p.score||0)+10);
+  if(a==="m10")ref.child("score").set(Math.max(0,(p.score||0)-10));
+}
+$("#qUploadDefault").addEventListener("click",async()=>{
+  if(!confirm("내장 60문항을 문제은행에 업로드할까요? (기존 유지, 추가됨)"))return;
+  const up={};DEFAULT_QUIZ.forEach(q=>up[q.id]=q);
+  await DB.ref("quizzes").update(up);alert("업로드 완료");
+});
+$("#qAdd").addEventListener("click",()=>{
+  const q=$("#qQ").value.trim();
+  const ch=[$("#qC0").value,$("#qC1").value,$("#qC2").value,$("#qC3").value].map(x=>x.trim());
+  if(!q||ch.some(x=>!x)){alert("문제와 보기 4개를 모두 입력하세요");return;}
+  const id="q"+Date.now();
+  DB.ref("quizzes/"+id).set({id,question:q,choices:ch,answer:0,difficulty:$("#qD").value,category:"관리자추가"});
+  ["#qQ","#qC0","#qC1","#qC2","#qC3"].forEach(s=>$(s).value="");
+});
+$("#qBulkGo").addEventListener("click",()=>{
+  let arr;try{arr=JSON.parse($("#qBulk").value);}catch(e){alert("JSON 형식 오류: "+e.message);return;}
+  if(!Array.isArray(arr)){alert("배열 형식이어야 합니다");return;}
+  const bad=arr.filter(q=>!q.question||!Array.isArray(q.choices)||q.choices.length!==4||typeof q.answer!=="number");
+  if(bad.length){alert(bad.length+"개 문항 형식 오류 — question/choices(4)/answer 필수");return;}
+  const up={};arr.forEach((q,i)=>{const id=q.id||("q"+Date.now()+"_"+i);up[id]={...q,id};});
+  DB.ref("quizzes").update(up).then(()=>alert(arr.length+"문항 업로드 완료"));
+});
+$("#qExport").addEventListener("click",async()=>{
+  const snap=await DB.ref("quizzes").get();
+  const txt=JSON.stringify(Object.values(snap.val()||{}),null,1);
+  await navigator.clipboard.writeText(txt);alert("클립보드에 복사되었습니다");
+});
+$("#qClear").addEventListener("click",()=>{if(confirm("문제은행을 전부 삭제할까요?"))DB.ref("quizzes").remove();});
+$("#imgGo").addEventListener("click",async()=>{
+  const files=[...$("#imgFiles").files];
+  if(!files.length){alert("파일을 선택하세요");return;}
+  const log=$("#imgLog");log.innerHTML="";let ok=0,fail=0;
+  for(const f of files){
+    const m=f.name.match(/^0*(\d{1,3})/);
+    if(!m){log.innerHTML+=`<div>⚠️ ${f.name} — 번호 인식 실패</div>`;fail++;continue;}
+    const id=String(m[1]).padStart(3,"0");
+    if(+m[1]<1||+m[1]>151){log.innerHTML+=`<div>⚠️ ${f.name} — 범위 밖</div>`;fail++;continue;}
+    try{
+      const ref=ST.ref("monsters/"+id+"."+(f.name.split(".").pop()||"png"));
+      await ref.put(f);
+      const url=await ref.getDownloadURL();
+      await DB.ref("monsterImages/"+id).set(url);
+      ok++;log.innerHTML+=`<div>✅ No.${id} 업로드 완료</div>`;
+    }catch(e){fail++;log.innerHTML+=`<div>❌ No.${id} 실패: ${e.message}</div>`;}
+    log.scrollTop=log.scrollHeight;
+  }
+  alert(`완료: ${ok}건 성공, ${fail}건 실패`);
+});
+</script>
+</body>
+</html>
