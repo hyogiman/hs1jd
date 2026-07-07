@@ -32,7 +32,7 @@ nav button.on{color:var(--ink);}nav button.on .ic{filter:none;transform:translat
 .btn.blue{background:linear-gradient(135deg,#4fc3f7,#3a8fd9);color:#06202e;}
 .btn.ghost{background:var(--panel2);color:var(--ink);border:1px solid var(--line);}
 .btn.sm{padding:10px;font-size:.88rem;margin-top:8px;}
-.btn:disabled{opacity:.4;}
+.btn:disabled{opacity:.4;filter:grayscale(.85);}
 .rank-neigh{margin-top:12px;border-top:1px solid var(--line);padding-top:8px;font-size:.85rem;}
 .rank-neigh div{display:flex;justify-content:space-between;padding:5px 2px;color:#c7d3e8;}
 .rank-neigh .me{color:var(--gold);font-weight:800;}
@@ -164,6 +164,13 @@ nav button.on{color:var(--ink);}nav button.on .ic{filter:none;transform:translat
 .join-ov .btn{max-width:320px;}
 .demo-tag{position:fixed;top:8px;left:8px;background:#e0525288;color:#fff;font-size:.62rem;padding:3px 8px;border-radius:99px;z-index:400;display:none;}
 .demo-tag.on{display:block;}
+.feed-box{max-height:250px;overflow-y:auto;}
+.chat-row{display:flex;gap:6px;margin-top:8px;}
+.chat-row input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:10px;font-size:.85rem;font-family:inherit;}
+.chat-item{font-size:.83rem;padding:6px 2px;border-bottom:1px solid var(--line);}
+.chat-item b{color:var(--gold);font-weight:700;margin-right:6px;}
+.chat-item time{color:var(--sub);font-size:.68rem;float:right;}
+nav button.lockdim{opacity:.35;}
 </style>
 </head>
 <body>
@@ -172,8 +179,10 @@ nav button.on{color:var(--ink);}nav button.on .ic{filter:none;transform:translat
 
 <div class="join-ov" id="joinOv">
   <h2>🧭 환수 원정대</h2>
-  <p>원정대에 등록할 이름(닉네임)을 입력하세요.<br>순위표와 배틀에서 이 이름이 표시됩니다.</p>
-  <input id="joinName" maxlength="10" placeholder="예: 번개조련사 인혁">
+  <p>교육 참가자 확인을 위해 정보를 입력하세요.<br>성명·직위는 순위표와 배틀에 표시됩니다.</p>
+  <input id="joinName" maxlength="10" placeholder="성명 (예: 정인혁)">
+  <input id="joinTitle" maxlength="12" placeholder="직위 (예: 책임)" style="margin-top:8px;">
+  <input id="joinCode" maxlength="10" placeholder="입장코드 (진행자 안내)" style="margin-top:8px;">
   <button class="btn gold" id="joinBtn">모험 시작!</button>
 </div>
 
@@ -194,9 +203,16 @@ nav button.on{color:var(--ink);}nav button.on .ic{filter:none;transform:translat
       </div>
       <div class="rank-neigh" id="rankNeigh"></div>
     </div>
-    <button class="btn ghost sm" id="btnHistory">📝 복습 노트 (푼 문제 다시보기)</button>
     <div class="card"><h3>실시간 소식</h3>
-      <div id="feed"><div class="feed-item"><time>--:--</time>원정을 시작하면 소식이 표시됩니다</div></div></div>
+      <div class="seg" id="feedSeg" style="margin-bottom:8px;">
+        <button data-f="all" class="on">전체</button><button data-f="mine">내 소식</button><button data-f="chat">💬 채팅</button>
+      </div>
+      <div class="feed-box" id="feedBox"><div class="feed-item"><time>--:--</time>소식이 여기에 표시됩니다</div></div>
+      <div class="chat-row" id="chatRow" style="display:none;">
+        <input id="chatIn" maxlength="60" placeholder="하고 싶은 말을 남겨보세요">
+        <button class="btn gold sm" style="width:auto;margin:0;padding:10px 14px;" id="chatGo">전송</button>
+      </div>
+    </div>
   </section>
 
   <section class="view" id="v-explore">
@@ -237,6 +253,7 @@ nav button.on{color:var(--ink);}nav button.on .ic{filter:none;transform:translat
         복습 퀴즈를 맞히면 환수가 회복됩니다. 이전에 <b>틀렸던 문제가 우선 출제</b>됩니다 — 치유가 곧 복습!</div>
       <div class="lock-note" id="healGateNote"></div>
     </div>
+    <button class="btn ghost sm" id="btnHistory">📝 복습 노트 (푼 문제 다시보기)</button>
     <div id="healList"></div>
   </section>
 </main>
@@ -303,13 +320,25 @@ const QUIZ_COUNT={"C":1,"B":1,"A":2,"S":3};
 const QUIZ_DIFF={"C":"easy","B":"easy","A":"mid","S":"hard"};
 const EVO_DIFF={"B":"easy","A":"mid","S":"hard"};
 const RPS_IC={"가위":"✂️","바위":"✊","보":"✋"};
-const EVO_TARGETS=new Set(MONSTERS.map(m=>m.evolveTo).filter(Boolean));
+let EVO_TARGETS=new Set(MONSTERS.map(m=>m.evolveTo).filter(Boolean));
+function applyMonsterData(ov,customs){
+  if(ov)for(const id in ov){const m=byId(id);if(m)Object.assign(m,ov[id]);}
+  if(customs)for(const id in customs){
+    const c=customs[id];if(!c||!c.name)continue;
+    const ex=byId(id);
+    if(ex)Object.assign(ex,c);
+    else MONSTERS.push({category:"일반",wildSpawn:true,safariOnly:false,imageUrl:null,...c,id});
+  }
+  EVO_TARGETS=new Set(MONSTERS.filter(m=>!m.disabled).map(m=>m.evolveTo).filter(Boolean));
+  renderDex();
+}
 const DEMO_PLAYERS=[{name:"번개조련사 민준",score:180},{name:"풀숲의 서연",score:145},{name:"심해탐험가 도윤",score:120},{name:"바람돌이 지우",score:95},{name:"돌주먹 하준",score:60},{name:"별빛수집가 유나",score:35}];
 const BOT_NAMES=["연습봇 알파","연습봇 브라보","연습봇 찰리","연습봇 델타","연습봇 에코"];
 
 const S={score:0,steps:0,stepGoal:0,collection:[],dexSet:new Set(),seenSet:new Set(),usedQuiz:new Set(),
-quizHistory:[],battleLog:[],foughtOpps:new Set(),sensorOn:false,cooldownUntil:0,feed:[],
-dexType:"전체",dexMode:"all",phase:"free",name:"",timerEnd:0};
+quizHistory:[],battleLog:[],foughtOpps:new Set(),sensorOn:false,cooldownUntil:0,
+feed:[],feedAll:[],chat:[],feedTab:"all",blogFilter:"all",joinTs:Date.now(),
+dexType:"전체",dexMode:"all",phase:"free",name:"",title:"",timerEnd:0,_phaseInit:false,wl:{w:0,l:0,d:0},_timerFired:false};
 function newGoal(){S.stepGoal=100+Math.floor(Math.random()*51);} newGoal();
 const $=s=>document.querySelector(s);
 const byId=id=>MONSTERS.find(m=>m.id===id);
@@ -317,7 +346,49 @@ const alive=c=>c.hp>0;
 
 function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("on");clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove("on"),2300);}
 function nowHM(){const n=new Date();return String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0");}
-function addFeed(msg){S.feed.unshift({t:nowHM(),msg});$("#feed").innerHTML=S.feed.slice(0,10).map(f=>`<div class="feed-item"><time>${f.t}</time>${f.msg}</div>`).join("");}
+const dispSelf=()=>S.name+(S.title?" "+S.title:"");
+function addFeed(msg){S.feed.unshift({t:nowHM(),msg});if(S.feed.length>40)S.feed.pop();renderFeeds();}
+function fmtTs(ts){if(!ts)return nowHM();const n=new Date(ts);return String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0");}
+function onGlobalFeed(v){
+  const t=fmtTs(v.ts);
+  S.feedAll.unshift({t,msg:v.msg});if(S.feedAll.length>60)S.feedAll.pop();
+  if(v.type==="notice"){S.feed.unshift({t,msg:v.msg});if(v.ts>S.joinTs)showNotice(v.msg);}
+  renderFeeds();
+}
+function renderFeeds(){
+  const box=$("#feedBox");if(!box)return;
+  const chatRow=$("#chatRow");
+  if(S.feedTab==="chat"){
+    chatRow.style.display="flex";
+    box.innerHTML=S.chat.map(c=>`<div class="chat-item"><b>${c.name}</b>${c.msg}<time>${c.t}</time></div>`).join("")
+      ||'<div style="color:var(--sub);font-size:.8rem;padding:8px 2px;">첫 메시지를 남겨보세요!</div>';
+    box.scrollTop=box.scrollHeight;
+  }else{
+    chatRow.style.display="none";
+    const list=S.feedTab==="all"?(DEMO_MODE?S.feed:S.feedAll):S.feed;
+    box.innerHTML=list.slice(0,40).map(f=>`<div class="feed-item"><time>${f.t}</time>${f.msg}</div>`).join("")
+      ||'<div style="color:var(--sub);font-size:.8rem;padding:8px 2px;">아직 소식이 없습니다.</div>';
+  }
+}
+document.querySelectorAll("#feedSeg button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("#feedSeg button").forEach(x=>x.classList.remove("on"));b.classList.add("on");
+    S.feedTab=b.dataset.f;renderFeeds();});});
+function showNotice(msg){
+  $("#detailSheet").innerHTML=`<div class="grip"></div>
+    <div style="text-align:center;padding:10px 0;"><div style="font-size:2.8rem;">📣</div>
+    <div class="enc-title" style="margin:8px 0 4px;">진행자 공지</div>
+    <div style="font-size:1.05rem;font-weight:700;line-height:1.6;padding:0 8px;">${msg.replace(/^📣\s*/,"")}</div></div>
+    <button class="btn gold" onclick="document.getElementById('mDetail').classList.remove('on')">확인</button>`;
+  $("#mDetail").classList.add("on");
+  if(navigator.vibrate)navigator.vibrate([120,60,120]);
+}
+function sendChat(){
+  const v=$("#chatIn").value.trim();if(!v)return;
+  $("#chatIn").value="";
+  if(DEMO_MODE){S.chat.push({name:dispSelf(),msg:v,t:nowHM()});renderFeeds();return;}
+  DB.ref("chat").push({uid:UID,name:dispSelf(),msg:v,ts:firebase.database.ServerValue.TIMESTAMP});
+}
 function artHTML(m){
   if(m.imageUrl) return `<img src="${m.imageUrl}" style="width:100%;height:100%;object-fit:contain;border-radius:50%;">`;
   if(SVG_ART[m.id]) return SVG_ART[m.id];
@@ -341,44 +412,125 @@ function fbInit(){
   });
 }
 function hydrate(d){
-  S.name=d.name||""; S.score=d.score||0; S.collection=d.collection||[];
+  S.name=d.name||""; S.title=d.title||""; S.score=d.score||0; S.collection=d.collection||[];
   S.dexSet=new Set(d.dex||[]); S.seenSet=new Set(d.seen||[]);
   S.foughtOpps=new Set(d.fought||[]); S.battleLog=d.blog||[];
+  S.quizHistory=d.qhist||[]; S.wl=d.wl||{w:0,l:0,d:0};
 }
-$("#joinBtn").addEventListener("click",()=>{
-  const n=$("#joinName").value.trim(); if(!n){toast("이름을 입력하세요");return;}
-  S.name=n; $("#joinOv").classList.remove("on"); savePlayer(); bootUI();
+$("#joinBtn").addEventListener("click",async()=>{
+  const n=$("#joinName").value.trim(),t=$("#joinTitle").value.trim(),c=$("#joinCode").value.trim();
+  if(!n){toast("성명을 입력하세요");return;}
+  if(!t){toast("직위를 입력하세요");return;}
+  try{
+    const snap=await DB.ref("game/entryCode").get();
+    const ec=snap.exists()?String(snap.val()):"";
+    if(ec&&c!==ec){toast("입장코드가 올바르지 않습니다");return;}
+  }catch(e){toast("서버 연결 실패 — 잠시 후 다시 시도");return;}
+  S.name=n;S.title=t;$("#joinOv").classList.remove("on");savePlayer();bootUI();
 });
 function savePlayer(){
   if(DEMO_MODE||!UID) return;
   clearTimeout(saveTm);
   saveTm=setTimeout(()=>{DB.ref("players/"+UID).set({
-    name:S.name,score:S.score,collection:S.collection,
+    name:S.name,title:S.title||"",score:S.score,collection:S.collection,
     dex:[...S.dexSet],seen:[...S.seenSet],fought:[...S.foughtOpps],
-    blog:S.battleLog.slice(0,15),upd:firebase.database.ServerValue.TIMESTAMP});},400);
+    blog:S.battleLog.slice(0,30),qhist:S.quizHistory.slice(-60),wl:S.wl,upd:firebase.database.ServerValue.TIMESTAMP});},400);
 }
 function globalFeed(msg){
-  if(DEMO_MODE){addFeed(msg);return;}
-  DB.ref("feed").push({msg,ts:firebase.database.ServerValue.TIMESTAMP});
+  addFeed(msg);
+  if(DEMO_MODE)return;
+  DB.ref("feed").push({msg,uid:UID,type:"event",ts:firebase.database.ServerValue.TIMESTAMP});
 }
 function attachListeners(){
   DB.ref("players").on("value",s=>{PLAYERS=s.val()||{};renderRank();});
-  DB.ref("feed").limitToLast(15).on("child_added",s=>{const v=s.val()||{};if(v.msg)addFeed(v.msg);});
+  DB.ref("feed").limitToLast(25).on("child_added",s=>{const v=s.val()||{};if(v.msg)onGlobalFeed(v);});
+  DB.ref("chat").limitToLast(30).on("child_added",s=>{const v=s.val()||{};if(!v.msg)return;
+    S.chat.push({name:v.name||"?",msg:v.msg,t:fmtTs(v.ts)});if(S.chat.length>40)S.chat.shift();renderFeeds();});
+  DB.ref("monsterOverrides").on("value",s=>{applyMonsterData(s.val()||{},null);});
+  DB.ref("customMonsters").on("value",s=>{applyMonsterData(null,s.val()||{});});
+  DB.ref("gifts/"+UID).on("child_added",s=>{
+    const g=s.val();s.ref.remove();
+    if(!g||!g.monsterId)return;
+    const m=byId(g.monsterId);if(!m)return;
+    S.collection.push({uid:Date.now()+"-"+Math.random().toString(36).slice(2,6),monsterId:m.id,hp:m.hp,wins:0});
+    S.dexSet.add(m.id);S.seenSet.add(m.id);refreshHUD();renderDex();
+    addFeed(`🎁 이벤트 선물로 <b>${m.name}</b>을(를) 받았습니다!`);
+    $("#detailSheet").innerHTML=`<div class="grip"></div><div style="text-align:center;">
+      <div class="art-stage" style="--tc:${TYPE_COLOR[m.type]}">${artHTML(m)}</div>
+      <div class="enc-name">🎁 이벤트 선물!</div>
+      <div style="color:var(--gold);font-weight:800;font-size:1.1rem;">${m.name} 획득!</div></div>
+      <button class="btn gold" onclick="document.getElementById('mDetail').classList.remove('on')">감사합니다!</button>`;
+    $("#mDetail").classList.add("on");
+    if(navigator.vibrate)navigator.vibrate([100,60,200]);
+  });
+  DB.ref("removals/"+UID).on("child_added",s=>{
+    const r=s.val();s.ref.remove();
+    if(!r||!r.instUid)return;
+    const i=S.collection.findIndex(c=>c.uid===r.instUid);
+    if(i>=0){const m=byId(S.collection[i].monsterId);S.collection.splice(i,1);
+      toast(`관리자에 의해 ${m?m.name:"환수"} 1마리가 회수되었습니다`);refreshHUD();renderDex();}
+  });
+  DB.ref("control/clearFeed").on("value",s=>{
+    const v=s.val();if(!v||v<=S.joinTs)return;
+    S.feed=[];S.feedAll=[];S.chat=[];renderFeeds();
+  });
   DB.ref("game/state").on("value",s=>{const v=s.val()||{};applyPhase(v.phase||"free",v.timerEnd||0);});
   DB.ref("monsterImages").on("value",s=>{const v=s.val()||{};let ch=false;for(const id in v){const m=byId(id);if(m&&m.imageUrl!==v[id]){m.imageUrl=v[id];ch=true;}}if(ch)renderDex();});
   DB.ref("quizzes").on("value",s=>{const v=s.val();if(v){const arr=Object.values(v).filter(q=>q&&q.question);if(arr.length>=10)QUIZ_BANK=arr;}});
   DB.ref("stations/heal").on("value",s=>{HEAL_STATION=s.val();renderHealGateNote();});
 }
 const PHASE_LABEL={free:"🧪 자유 모드 (라운드 제어 전 — 모든 기능 사용 가능)",lobby:"⏳ 게임 대기 중 — 곧 시작합니다!",round1:"🌲 1라운드 — 사파리 탐험!",round2:"⚔️ 2라운드 — 상호 배틀!",ended:"🏁 게임 종료 — 수고하셨습니다!"};
+const PHASE_POPUP={lobby:["⏳ 잠시 대기해주세요","곧 게임이 시작됩니다! 안내에 귀 기울여주세요."],
+round1:["🌲 1라운드 시작!","사파리 탐험이 열렸습니다.<br>걸어다니며 야생 환수를 포획하세요!"],
+round2:["⚔️ 2라운드 시작!","상호 배틀과 치유의 샘이 열렸습니다.<br>동료를 만나 배틀 코드를 교환하세요! (탐험 종료)"],
+ended:["🏁 게임 종료!","수고하셨습니다!<br>복습 노트에서 오늘 풀었던 문제를 확인해보세요."]};
+function updateActionLocks(){
+  const ex=canExplore(),bt=canBattle();
+  const bs=$("#btnStart");if(bs)bs.disabled=!ex;
+  const sim=$("#btnSim");if(sim)sim.disabled=!ex;
+  document.querySelectorAll("#battleButtons .btn").forEach(b=>b.disabled=!bt);
+  document.querySelectorAll("#healList .btn").forEach(b=>b.disabled=!bt);
+}
+function updateNavLocks(){
+  document.querySelectorAll("nav button").forEach(b=>{
+    const v=b.dataset.v;let lock=false;
+    if(v==="explore")lock=!canExplore();
+    if(v==="battle"||v==="heal")lock=!canBattle();
+    b.classList.toggle("lockdim",lock);});
+}
 function applyPhase(ph,timerEnd){
+  const prev=S.phase, first=!S._phaseInit; S._phaseInit=true;
+  if(timerEnd!==S.timerEnd)S._timerFired=false;
   S.phase=ph;S.timerEnd=timerEnd;
   $("#phaseBanner").querySelector("span").innerHTML=PHASE_LABEL[ph]||ph;
-  if(ph==="ended"&&!reviewShown){reviewShown=true;setTimeout(()=>{toast("게임 종료! 복습 노트가 열립니다");renderHistory("wrong");},900);}
+  updateNavLocks();updateActionLocks();
+  if(!first&&prev!==ph&&PHASE_POPUP[ph]){
+    const[t,d]=PHASE_POPUP[ph];
+    $("#detailSheet").innerHTML=`<div class="grip"></div>
+      <div style="text-align:center;padding:10px 0;">
+      <div class="enc-name" style="font-size:1.4rem;">${t}</div>
+      <div style="font-size:.95rem;color:#c7d3e8;line-height:1.7;margin-top:8px;">${d}</div></div>
+      <button class="btn gold" onclick="document.getElementById('mDetail').classList.remove('on')">확인!</button>`;
+    $("#mDetail").classList.add("on");
+    if(navigator.vibrate)navigator.vibrate([120,60,120]);
+  }
+  if(ph==="ended"&&!reviewShown){reviewShown=true;setTimeout(()=>{renderHistory("wrong");},1200);}
 }
 setInterval(()=>{
-  if(!S.timerEnd){$("#phaseTimer").textContent="";return;}
+  if(!S.timerEnd){$("#phaseTimer").textContent="";S._timerFired=false;return;}
   const r=Math.max(0,Math.floor((S.timerEnd-Date.now())/1000));
   $("#phaseTimer").textContent=`${Math.floor(r/60)}:${String(r%60).padStart(2,"0")}`;
+  if(r===0&&!S._timerFired&&(S.phase==="round1"||S.phase==="round2")){
+    S._timerFired=true;
+    const nm=S.phase==="round1"?"1라운드":"2라운드";
+    $("#detailSheet").innerHTML=`<div class="grip"></div><div style="text-align:center;padding:10px 0;">
+      <div style="font-size:2.6rem;">⏱</div>
+      <div class="enc-name">${nm} 시간이 종료되었습니다!</div>
+      <div style="color:var(--sub);font-size:.9rem;margin-top:6px;">진행자의 다음 안내를 기다려주세요.</div></div>
+      <button class="btn gold" onclick="document.getElementById('mDetail').classList.remove('on')">확인</button>`;
+    $("#mDetail").classList.add("on");
+    if(navigator.vibrate)navigator.vibrate([200,80,200]);
+  }
 },1000);
 const canExplore=()=>["free","round1"].includes(S.phase);
 const canBattle=()=>["free","round2"].includes(S.phase);
@@ -387,23 +539,23 @@ function refreshHUD(){
   $("#scorePill").textContent=`🏅 ${S.score}점`;
   $("#homeOwned").textContent=S.collection.length;
   $("#homeDex").textContent=S.dexSet.size;
-  $("#myNameTag").textContent=S.name;
+  $("#myNameTag").textContent=dispSelf();
   renderRank(); savePlayer();
 }
 function renderRank(){
   let board;
   if(DEMO_MODE) board=[...DEMO_PLAYERS.map(p=>({...p})),{name:S.name,score:S.score,me:true}];
   else{
-    board=Object.entries(PLAYERS).map(([uid,p])=>({name:p.name||"?",score:p.score||0,me:uid===UID}));
+    board=Object.entries(PLAYERS).map(([uid,p])=>({name:(p.name||"?")+(p.title?" "+p.title:""),score:p.score||0,me:uid===UID}));
     if(!board.some(p=>p.me)) board.push({name:S.name,score:S.score,me:true});
-    else board=board.map(p=>p.me?{...p,score:S.score,name:S.name}:p);
+    else board=board.map(p=>p.me?{...p,score:S.score,name:dispSelf()}:p);
   }
   board.sort((a,b)=>b.score-a.score);
   const idx=board.findIndex(p=>p.me);
   $("#homeRank").textContent=(idx+1)+"위";
   const rows=[];
   if(idx>0){const u=board[idx-1];rows.push(`<div><span>△ ${idx}위 ${u.name}</span><span class="gap">${u.score-S.score}점 차</span></div>`);}
-  rows.push(`<div class="me"><span>▶ ${idx+1}위 ${S.name||"나"}</span><span>${S.score}점</span></div>`);
+  rows.push(`<div class="me"><span>▶ ${idx+1}위 ${dispSelf()||"나"}</span><span>${S.score}점</span></div>`);
   if(idx<board.length-1){const d=board[idx+1];rows.push(`<div><span>▽ ${idx+2}위 ${d.name}</span><span class="gap">+${S.score-d.score}점 앞섬</span></div>`);}
   rows.push(`<div style="color:var(--sub);font-size:.75rem;justify-content:center;">총 ${board.length}명 참가 중</div>`);
   $("#rankNeigh").innerHTML=rows.join("");
@@ -429,7 +581,16 @@ function onMotion(e){
   if(mag>11.5&&lastMag<=11.5&&now-lastStepAt>320){lastStepAt=now;addSteps(1);}
   lastMag=mag;
 }
-const IDLE_MSGS=["이 일대를 천천히 돌아보자…","바람에 낯선 냄새가 섞여 있다.","어디선가 작은 발소리가…?"];
+const IDLE_MSGS=["이 일대를 천천히 돌아보자…","바람에 낯선 냄새가 섞여 있다.","어디선가 작은 발소리가…?",
+"마른 잎이 저절로 뒤집혔다.","새들이 갑자기 조용해졌다.","발밑의 돌이 미지근하다…?",
+"저 앞 수풀의 그림자가 움직인 듯하다.","공기가 조금 서늘해졌다.","멀리서 정체 모를 울음소리가 들린다.",
+"누군가 지켜보는 기분이 든다.","땅에 못 보던 발자국이 찍혀 있다.","바람이 한 방향으로만 분다…"];
+const MID_MSGS=["풀숲이 흔들린 것 같다…","수풀 사이로 무언가 스쳐 지나갔다!","작은 그림자가 나무 뒤로 숨었다.",
+"낮게 그르렁거리는 소리가 들린다…","발자국이 점점 선명해진다!","풀잎 끝이 파르르 떨리고 있다."];
+const NEAR_MSGS=["아주 가까이서 기척이 느껴진다…!","심장이 빨라진다 — 바로 근처다!","숨소리가 들릴 만큼 가깝다…!",
+"수풀이 크게 출렁였다!!","등 뒤에서 시선이 느껴진다…!","공기가 팽팽하게 긴장됐다…!"];
+let _lastMsg="";
+function pickMsg(arr){let m;do{m=arr[Math.floor(Math.random()*arr.length)];}while(m===_lastMsg&&arr.length>1);_lastMsg=m;return m;}
 function scoutMsg(txt,hot){const el=$("#scoutMsg");el.textContent=txt;el.classList.toggle("hot",!!hot);}
 function addSteps(n){
   if(!canExplore()){return;}
@@ -437,9 +598,13 @@ function addSteps(n){
   S.steps+=n;
   const p=S.steps/S.stepGoal, sc=$("#scout");
   if(p>=1){triggerEncounter();return;}
-  if(p>=0.85){sc.classList.add("near");scoutMsg("아주 가까이서 기척이 느껴진다…!",true);}
-  else if(p>=0.55){scoutMsg("풀숲이 흔들린 것 같다…");}
-  else if(S.steps%25===0){scoutMsg(IDLE_MSGS[Math.floor(Math.random()*IDLE_MSGS.length)]);}
+  const zone=p>=0.85?2:p>=0.55?1:0;
+  if(zone!==S._zone){S._zone=zone;
+    if(zone===2){sc.classList.add("near");scoutMsg(pickMsg(NEAR_MSGS),true);}
+    else if(zone===1){scoutMsg(pickMsg(MID_MSGS));}
+  }else if(zone===2&&S.steps%15===0){scoutMsg(pickMsg(NEAR_MSGS),true);}
+  else if(zone===1&&S.steps%20===0){scoutMsg(pickMsg(MID_MSGS));}
+  else if(zone===0&&S.steps%22===0){scoutMsg(pickMsg(IDLE_MSGS));}
 }
 $("#btnStart").addEventListener("click",async()=>{
   if(!canExplore()){toast("지금은 탐험 시간이 아닙니다");return;}
@@ -470,9 +635,12 @@ function pickQuiz(diff){
   const q=pool[Math.floor(Math.random()*pool.length)];S.usedQuiz.add(q.id);return q;
 }
 function pickReviewQuiz(){
-  const wrongIds=[...new Set(S.quizHistory.filter(h=>!h.correct).map(h=>h.q.id))];
-  if(wrongIds.length){const id=wrongIds[Math.floor(Math.random()*wrongIds.length)];
-    const q=QUIZ_BANK.find(q=>q.id===id); if(q)return q;}
+  // 문항별 '가장 최근 시도'가 오답인 것만 복습 대상 (복습으로 맞힌 문제는 재출제 안 함)
+  const latest={};
+  S.quizHistory.forEach(h=>{latest[h.q.id]=h.correct;});
+  const pool=Object.keys(latest).filter(id=>latest[id]===false);
+  if(pool.length){const id=pool[Math.floor(Math.random()*pool.length)];
+    const q=QUIZ_BANK.find(q=>q.id===id);if(q)return q;}
   return pickQuiz("easy");
 }
 function recordQuiz(q,myPick,correct,ctx,mon){S.quizHistory.push({q,myPick,correct,ctx,mon,t:nowHM()});}
@@ -497,16 +665,16 @@ function renderQuiz(el,q,meta,onEnd){
 function rollGrade(){const r=Math.random();let a=0;for(const[g,p]of GRADE_RATE){a+=p;if(r<a)return g;}return"C";}
 function rollMonster(){
   const g=rollGrade();
-  let pool=MONSTERS.filter(m=>m.grade===g&&m.wildSpawn&&!m.safariOnly&&!EVO_TARGETS.has(m.id));
-  if(!pool.length)pool=MONSTERS.filter(m=>m.grade===g&&m.wildSpawn&&!m.safariOnly);
+  let pool=MONSTERS.filter(m=>!m.disabled&&m.grade===g&&m.wildSpawn&&!m.safariOnly&&!EVO_TARGETS.has(m.id));
+  if(!pool.length)pool=MONSTERS.filter(m=>!m.disabled&&m.grade===g&&m.wildSpawn&&!m.safariOnly);
   return pool[Math.floor(Math.random()*pool.length)];
 }
 let ENC=null;
 function triggerEncounter(){
-  S.steps=0;newGoal();$("#scout").classList.remove("near");
+  S.steps=0;newGoal();S._zone=0;$("#scout").classList.remove("near");
   const m=rollMonster();
   S.seenSet.add(m.id);
-  if(m.grade==="S")globalFeed(`⚡ 야생의 <b>전설 환수</b>가 목격되었다! (${S.name}님 조우)`);
+  if(m.grade==="S")globalFeed(`⚡ 야생의 <b>전설 환수</b>가 목격되었다! (${dispSelf()}님 조우)`);
   ENC={m,need:QUIZ_COUNT[m.grade],done:0};
   renderEncIntro();$("#mEnc").classList.add("on");
   if(navigator.vibrate)navigator.vibrate([80,50,80]);
@@ -552,7 +720,7 @@ function capture(){
   const isNew=!S.dexSet.has(m.id);S.dexSet.add(m.id);S.seenSet.add(m.id);
   S.score+=pts;refreshHUD();
   addFeed(`<b>${m.name}</b>(${m.grade}) 포획! +${pts}점 ${isNew?"· 도감 신규 등록📖":""}`);
-  if(!DEMO_MODE&&(m.grade==="A"||m.grade==="S"))globalFeed(`🎉 <b>${S.name}</b>님이 ${m.grade}등급 <b>${m.name}</b> 포획!`);
+  if(!DEMO_MODE&&(m.grade==="A"||m.grade==="S"))globalFeed(`🎉 <b>${dispSelf()}</b>님이 ${m.grade}등급 <b>${m.name}</b> 포획!`);
   $("#encSheet").innerHTML=`<div class="grip"></div>
     <div style="text-align:center;">
     <div class="art-stage" style="--tc:${TYPE_COLOR[m.type]}">${artHTML(m)}</div>
@@ -575,8 +743,8 @@ function buildDexSide(){
   $("#dexSide").querySelectorAll("button").forEach(b=>{
     b.addEventListener("click",()=>{S.dexType=b.dataset.t;buildDexSide();renderDex();});});
 }
-document.querySelectorAll(".seg button").forEach(b=>{
-  b.addEventListener("click",()=>{document.querySelectorAll(".seg button").forEach(x=>x.classList.remove("on"));b.classList.add("on");S.dexMode=b.dataset.m;renderDex();});});
+document.querySelectorAll("#v-dex .seg button").forEach(b=>{
+  b.addEventListener("click",()=>{document.querySelectorAll("#v-dex .seg button").forEach(x=>x.classList.remove("on"));b.classList.add("on");S.dexMode=b.dataset.m;renderDex();});});
 function typeMatch(m){
   if(S.dexType==="전체")return true;
   if(S.dexType==="사신수")return m.category==="사신수";
@@ -585,7 +753,7 @@ function typeMatch(m){
 function renderDex(){
   if(!document.getElementById("dexContent"))return;
   if(S.dexMode==="all"){
-    const list=MONSTERS.filter(typeMatch);
+    const list=MONSTERS.filter(m=>!m.disabled&&typeMatch(m));
     const ownedCnt=list.filter(m=>S.dexSet.has(m.id)).length;
     const seenCnt=list.filter(m=>!S.dexSet.has(m.id)&&S.seenSet.has(m.id)).length;
     $("#dexCnt").textContent=`포획 ${ownedCnt} · 목격 ${seenCnt} / ${list.length}`;
@@ -678,7 +846,7 @@ function evolveQuiz(c){
     const isNew=!S.dexSet.has(tgt.id);S.dexSet.add(tgt.id);S.seenSet.add(tgt.id);
     S.score+=20;refreshHUD();renderDex();
     addFeed(`✨ <b>${m.name}</b>이(가) <b>${tgt.name}</b>(으)로 진화! +20점`);
-    if(!DEMO_MODE)globalFeed(`✨ <b>${S.name}</b>님의 ${m.name}이(가) <b>${tgt.name}</b>(으)로 진화!`);
+    if(!DEMO_MODE)globalFeed(`✨ <b>${dispSelf()}</b>님의 ${m.name}이(가) <b>${tgt.name}</b>(으)로 진화!`);
     $("#detailSheet").innerHTML=`<div class="grip"></div>
       <div style="text-align:center;">
       <div class="art-stage" style="--tc:${TYPE_COLOR[tgt.type]}">${artHTML(tgt)}</div>
@@ -706,6 +874,7 @@ function renderBattleButtons(){
   const bb=$("#btnBot");if(bb)bb.addEventListener("click",startBotBattle);
   const bh=$("#btnHost");if(bh)bh.addEventListener("click",hostBattle);
   const bj=$("#btnJoin");if(bj)bj.addEventListener("click",joinBattleUI);
+  updateActionLocks();
 }
 function preBattleCheck(){
   if(!canBattle()){toast("배틀은 2라운드에 열립니다");return false;}
@@ -716,7 +885,7 @@ function botRoll(){
   const rates=[["C",0.5],["B",0.3],["A",0.15],["S",0.05]];
   const r=Math.random();let a=0,g="C";
   for(const[gg,p]of rates){a+=p;if(r<a){g=gg;break;}}
-  const pool=MONSTERS.filter(m=>m.grade===g&&m.category!=="사신수");
+  const pool=MONSTERS.filter(m=>!m.disabled&&m.grade===g&&m.category!=="사신수");
   const m=pool[Math.floor(Math.random()*pool.length)];
   return {monsterId:m.id,hp:m.hp,name:BOT_NAMES[Math.floor(Math.random()*BOT_NAMES.length)]};
 }
@@ -737,7 +906,7 @@ async function hostBattle(){
     if(!snap.exists()){code=c;ref=rf;break;}
   }
   if(!code){toast("코드 생성 실패 — 다시 시도해주세요");return;}
-  await ref.set({host:{uid:UID,name:S.name},status:"waiting",created:firebase.database.ServerValue.TIMESTAMP});
+  await ref.set({host:{uid:UID,name:dispSelf()},status:"waiting",created:firebase.database.ServerValue.TIMESTAMP});
   ref.onDisconnect().remove();
   B={mode:"net",role:"h",code,ref,mine:null,slots:[null,null,null],uiPhase:"wait",
      dmgDealt:0,dmgTaken:0,winA:0,winB:0,revealStarted:false,done:false};
@@ -769,7 +938,7 @@ async function joinBattle(code){
   if(!snap.exists()){toast("존재하지 않는 코드입니다");return;}
   const room=snap.val();
   if(room.host&&room.host.uid===UID){toast("자기 방에는 입장할 수 없어요");return;}
-  const res=await ref.child("guest").transaction(cur=>cur===null?{uid:UID,name:S.name}:undefined);
+  const res=await ref.child("guest").transaction(cur=>cur===null?{uid:UID,name:dispSelf()}:undefined);
   if(!res.committed){toast("이미 다른 사람이 입장했습니다");return;}
   ref.child("status").set("picking");
   B={mode:"net",role:"g",code,ref,mine:null,slots:[null,null,null],uiPhase:"",
@@ -838,7 +1007,7 @@ function renderBattlePick(){
     el.addEventListener("click",()=>{
       B.mine=S.collection.find(c=>c.uid===el.dataset.uid);
       if(B.mode==="net"){
-        B.ref.child("pick_"+B.role).set({uid:UID,name:S.name,instUid:B.mine.uid,monsterId:B.mine.monsterId,hp:B.mine.hp,wins:B.mine.wins});
+        B.ref.child("pick_"+B.role).set({uid:UID,name:dispSelf(),instUid:B.mine.uid,monsterId:B.mine.monsterId,hp:B.mine.hp,wins:B.mine.wins});
       }else renderBattleCommit();
     });
   });
@@ -991,10 +1160,11 @@ function finishBattle(fromSd){
     if(!S.foughtOpps.has(oppKey)){pts+=10;rows.push(["첫 상대 보너스","+10"]);}
     const gd=GRADE_IDX[om.grade]-GRADE_IDX[mm.grade];
     if(gd>0){const gk=gd*15;pts+=gk;rows.push([`⚡ 자이언트 킬링 (등급차 ${gd})`,`+${gk}`]);
-      if(!DEMO_MODE)globalFeed(`⚡ 자이언트 킬링! <b>${S.name}</b>님의 ${mm.name}(${mm.grade})이 ${om.name}(${om.grade})을 격파!`);}
+      if(!DEMO_MODE)globalFeed(`⚡ 자이언트 킬링! <b>${dispSelf()}</b>님의 ${mm.name}(${mm.grade})이 ${om.name}(${om.grade})을 격파!`);}
     B.mine.wins++;
   }
   S.foughtOpps.add(oppKey);
+  S.wl[result==="win"?"w":result==="lose"?"l":"d"]++;
   S.score+=pts;
   const resTxt=result==="win"?"🏆 승리!":result==="lose"?"패배…":"무승부";
   const evoReady=mm.evolveTo&&B.mine.wins>=mm.evolveWins&&B.mine.hp>0;
@@ -1003,7 +1173,7 @@ function finishBattle(fromSd){
   addFeed(`${B.opp.name}와(과)의 배틀 <b>${resTxt}</b> ${pts?`+${pts}점`:""} ${myFaint?`· ${mm.name} 기절😵`:""}`);
   if(B.mode==="net"&&B.role==="h"){
     if(result!=="draw"){
-      const wn=result==="win"?S.name:B.opp.name,ln=result==="win"?B.opp.name:S.name;
+      const wn=result==="win"?dispSelf():B.opp.name,ln=result==="win"?B.opp.name:dispSelf();
       globalFeed(`⚔️ <b>${wn}</b>님이 ${ln}님과의 배틀에서 승리!`);
     }
     setTimeout(()=>{try{B&&B.ref&&B.ref.remove();}catch(e){}},5000);
@@ -1023,12 +1193,25 @@ function finishBattle(fromSd){
   $("#battleSheet").scrollTop=$("#battleSheet").scrollHeight;
 }
 function renderBattleLog(){
-  $("#battleLog").innerHTML=S.battleLog.length?S.battleLog.slice(0,10).map(l=>{
-    const cls=l.result==="win"?"w":l.result==="lose"?"l":"d";
-    const txt=l.result==="win"?"승":l.result==="lose"?"패":"무";
-    return `<div class="log-item"><time style="color:var(--sub);font-size:.7rem;">${l.t}</time>
-    vs ${l.opp} — 내 <b>${l.my}</b> vs 상대 <b>${l.om}</b> · <b class="${cls}">${txt}</b> ${l.pts?`(+${l.pts}점)`:""}</div>`;}).join("")
-  :`<div style="font-size:.8rem;color:var(--sub);">아직 배틀 기록이 없습니다.</div>`;
+  const L=S.battleLog;
+  const w=L.filter(x=>x.result==="win").length,l=L.filter(x=>x.result==="lose").length,d=L.length-w-l;
+  const list=S.blogFilter==="all"?L:L.filter(x=>x.result===S.blogFilter);
+  $("#battleLog").innerHTML=`
+    <div style="display:flex;gap:12px;align-items:baseline;margin-bottom:8px;">
+      <span style="font-size:1.35rem;font-weight:800;">${w}승 ${l}패${d?` ${d}무`:""}</span>
+      <span style="color:var(--sub);font-size:.78rem;">승률 ${L.length?Math.round(w/L.length*100):0}%</span></div>
+    <div class="seg">
+      <button data-bf="all" class="${S.blogFilter==="all"?"on":""}">전체 ${L.length}</button>
+      <button data-bf="win" class="${S.blogFilter==="win"?"on":""}">승 ${w}</button>
+      <button data-bf="lose" class="${S.blogFilter==="lose"?"on":""}">패 ${l}</button></div>
+    ${list.length?list.slice(0,20).map(x=>{
+      const cls=x.result==="win"?"w":x.result==="lose"?"l":"d";
+      const txt=x.result==="win"?"승":x.result==="lose"?"패":"무";
+      return `<div class="log-item"><time style="color:var(--sub);font-size:.7rem;">${x.t}</time>
+      vs ${x.opp} — 내 <b>${x.my}</b> vs 상대 <b>${x.om}</b> · <b class="${cls}">${txt}</b> ${x.pts?`(+${x.pts}점)`:""}</div>`;}).join("")
+    :'<div style="font-size:.8rem;color:var(--sub);margin-top:6px;">해당 기록이 없습니다.</div>'}`;
+  $("#battleLog").querySelectorAll("[data-bf]").forEach(b=>
+    b.addEventListener("click",()=>{S.blogFilter=b.dataset.bf;renderBattleLog();}));
 }
 function closeBattle(){
   if(B&&B.unsub)try{B.unsub();}catch(e){}
@@ -1054,6 +1237,7 @@ function renderHeal(){
       <button class="btn gold sm" style="width:auto;flex:none;margin:0;padding:9px 14px;" data-uid="${c.uid}">치유</button></div>`;}).join("")
   :`<div class="card" style="text-align:center;color:var(--sub);font-size:.85rem;">모든 환수가 건강합니다! 💪</div>`;
   $("#healList").querySelectorAll("[data-uid]").forEach(b=>b.addEventListener("click",()=>healGate(b.dataset.uid)));
+  updateActionLocks();
 }
 function healGate(uid){
   if(!canBattle()){toast("치유의 샘은 2라운드에 열립니다");return;}
@@ -1068,7 +1252,7 @@ function healGate(uid){
   $("#healCodeGo").addEventListener("click",async()=>{
     const v=$("#healCode").value.trim();
     const snap=await DB.ref("stations/heal").get();const st=snap.val()||{};
-    if(v&&(v===String(st.code)||v===String(st.prevCode)))healQuiz(uid);
+    if(v&&v===String(st.code))healQuiz(uid);
     else toast("코드가 올바르지 않습니다 — 화면의 최신 코드를 입력하세요");
   });
   $("#mDetail").classList.add("on");
@@ -1128,8 +1312,11 @@ function renderHistory(mode){
 
 /* ==================== 부트 ==================== */
 function bootUI(){
-  buildDexSide();renderDex();refreshHUD();renderBattleLog();renderBattleButtons();renderHealGateNote();
-  addFeed(DEMO_MODE?"환수 원정대 v0.5 (로컬 데모) — 탐험을 시작하세요!":`<b>${S.name}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
+  buildDexSide();renderDex();refreshHUD();renderBattleLog();renderBattleButtons();renderHealGateNote();updateNavLocks();updateActionLocks();
+  if(!DEMO_MODE)$("#btnSim").style.display="none"; /* 실전에선 테스트 버튼 자동 숨김 */
+  $("#chatGo").addEventListener("click",sendChat);
+  $("#chatIn").addEventListener("keydown",e=>{if(e.key==="Enter")sendChat();});
+  addFeed(DEMO_MODE?"환수 원정대 v0.6 (로컬 데모) — 탐험을 시작하세요!":`<b>${dispSelf()}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
 }
 fbInit();
 </script>

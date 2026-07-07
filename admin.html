@@ -4,116 +4,242 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>환수 원정대 · 관리자 콘솔</title>
 <style>
-:root{--bg:#0e1526;--panel:#182238;--panel2:#1f2c47;--line:#2c3b5c;--ink:#eef3fb;--sub:#8fa3c4;--gold:#f2b441;}
+:root{--bg:#0e1526;--panel:#182238;--panel2:#1f2c47;--line:#2c3b5c;--ink:#eef3fb;--sub:#8fa3c4;--gold:#f2b441;--red:#e05252;--green:#4caf50;}
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Pretendard','Malgun Gothic',sans-serif;background:var(--bg);color:var(--ink);padding:20px;max-width:1100px;margin:0 auto;}
-h1{font-size:1.3rem;margin-bottom:4px;}h1 small{color:var(--gold);font-size:.7rem;letter-spacing:.25em;display:block;}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;margin-top:14px;}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;}
+body{font-family:'Pretendard','Malgun Gothic',sans-serif;background:var(--bg);color:var(--ink);padding:18px;max-width:1100px;margin:0 auto;}
+h1{font-size:1.25rem;}h1 small{color:var(--gold);font-size:.68rem;letter-spacing:.25em;display:block;}
+.tabs{display:flex;gap:6px;margin:16px 0 12px;flex-wrap:wrap;}
+.tabs button{background:var(--panel);border:1px solid var(--line);color:var(--sub);border-radius:12px;padding:11px 18px;cursor:pointer;font-family:inherit;font-size:.9rem;font-weight:600;}
+.tabs button.on{background:var(--panel2);color:var(--gold);border-color:var(--gold);}
+.tabview{display:none;}.tabview.on{display:block;}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px;}
 .card h3{font-size:.95rem;color:var(--gold);margin-bottom:10px;}
 button{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px 14px;cursor:pointer;font-family:inherit;font-size:.85rem;margin:3px 3px 3px 0;}
 button.gold{background:linear-gradient(135deg,#f2b441,#e8823e);color:#2b1a05;border:none;font-weight:700;}
-button.red{background:#5c2430;border-color:#e05252;}
+button.red{background:#5c2430;border-color:var(--red);}
 button.on{border-color:var(--gold);color:var(--gold);font-weight:700;}
 input,textarea,select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px;font-family:inherit;font-size:.85rem;width:100%;margin:3px 0;}
-textarea{min-height:110px;font-family:'Consolas',monospace;font-size:.78rem;}
-table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:6px;}
-th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:left;}
+textarea{min-height:100px;font-family:'Consolas',monospace;font-size:.78rem;}
+table{width:100%;border-collapse:collapse;font-size:.82rem;margin-top:6px;}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;}
 th{color:var(--sub);font-weight:600;}
-.stat{font-size:.78rem;color:var(--sub);margin:4px 0;}
+.stat{font-size:.78rem;color:var(--sub);margin:4px 0;line-height:1.6;}
 .tag{font-size:.68rem;padding:2px 8px;border-radius:99px;background:var(--panel2);color:var(--sub);margin-left:6px;}
+.row2{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:760px){.grid2{grid-template-columns:1fr;}}
+/* 라운드 상태 대형 표시 */
+.phase-big{border-radius:16px;padding:22px;text-align:center;margin-bottom:14px;border:2px solid var(--line);background:var(--panel);}
+.phase-big .ph-name{font-size:2rem;font-weight:900;}
+.phase-big .ph-desc{color:var(--sub);font-size:.9rem;margin-top:6px;}
+.phase-big .ph-timer{font-size:1.4rem;font-weight:800;color:var(--gold);margin-top:6px;font-family:'Consolas',monospace;}
+.phase-big.p-lobby{border-color:#8fa3c4;}.phase-big.p-round1{border-color:#5bbf4e;background:#16241a;}
+.phase-big.p-round2{border-color:#e05252;background:#241618;}.phase-big.p-ended{border-color:var(--gold);background:#241f12;}
+.phase-big.p-free{border-color:#4fc3f7;}
+.code-live{font-family:'Consolas',monospace;font-size:1.6rem;font-weight:800;letter-spacing:.2em;color:#7fe3d4;}
 .qitem{border-bottom:1px solid var(--line);padding:8px 2px;font-size:.8rem;display:flex;gap:8px;align-items:flex-start;}
 .qitem .qq{flex:1;}
+.mitem{display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:7px 2px;font-size:.82rem;}
+.mitem .mi{flex:1;}
 .gate{max-width:360px;margin:120px auto;text-align:center;}
 #app{display:none;}
-.row2{display:flex;gap:6px;}
-.log{font-size:.74rem;color:var(--sub);max-height:120px;overflow-y:auto;margin-top:6px;}
+.toast{position:fixed;top:16px;right:16px;background:#0b3d1e;border:1px solid var(--green);color:#c9f2d4;padding:12px 18px;border-radius:12px;font-size:.85rem;z-index:99;opacity:0;transition:.3s;pointer-events:none;}
+.toast.on{opacity:1;}
+.toast.err{background:#3d0b0b;border-color:var(--red);color:#f2c9c9;}
+.log{font-size:.74rem;color:var(--sub);max-height:130px;overflow-y:auto;margin-top:6px;background:var(--panel2);border-radius:8px;padding:8px;}
 </style>
 </head>
 <body>
 <div class="gate" id="gate">
-  <h1>🛠️ 관리자 콘솔</h1>
-  <p style="color:var(--sub);font-size:.85rem;margin:10px 0;">관리자 암호를 입력하세요</p>
-  <input id="passIn" type="password" placeholder="암호">
+  <h1 style="margin-bottom:12px;">🛠️ 관리자 콘솔</h1>
+  <input id="passIn" type="password" placeholder="관리자 암호">
   <button class="gold" style="width:100%;margin-top:8px;" id="passGo">입장</button>
 </div>
 
 <div id="app">
 <h1>🛠️ 환수 원정대 관리자 콘솔 <small>MONSTER EXPEDITION ADMIN</small></h1>
-<div class="grid">
-  <div class="card">
-    <h3>🎮 게임 라운드 제어</h3>
-    <div id="phaseBtns">
-      <button data-ph="lobby">⏳ 대기</button>
-      <button data-ph="round1">🌲 1라운드 (사파리)</button>
-      <button data-ph="round2">⚔️ 2라운드 (배틀)</button>
-      <button data-ph="ended" class="red">🏁 게임 종료</button>
-      <button data-ph="free">🧪 자유 모드</button>
-    </div>
-    <div class="row2" style="margin-top:8px;">
-      <input id="timerMin" type="number" placeholder="타이머(분)" style="width:120px;">
-      <button id="timerSet">타이머 시작</button>
-      <button id="timerClear">타이머 해제</button>
-    </div>
-    <div class="stat" id="phaseStat">현재: -</div>
-    <h3 style="margin-top:14px;">🖥️ 대형 스크린 모드</h3>
-    <button data-sc="leaderboard">🏆 리더보드</button>
-    <button data-sc="heal">💧 치유의 샘 코드</button>
-    <h3 style="margin-top:14px;">💧 치유의 샘</h3>
-    <button id="healOpen" class="gold">샘 열기</button>
-    <button id="healClose" class="red">샘 닫기</button>
-    <span class="stat" id="healStat"></span>
-  </div>
+<div class="tabs">
+  <button data-t="ops" class="on">🎮 운영</button>
+  <button data-t="players">👥 참가자</button>
+  <button data-t="quiz">❓ 문제은행</button>
+  <button data-t="mon">🐉 환수 관리</button>
+  <button data-t="set">⚙️ 설정</button>
+</div>
 
-  <div class="card">
-    <h3>📣 공지 발송 (전원 피드)</h3>
-    <input id="noticeIn" placeholder="예: ⚡ 5분 후 2라운드가 시작됩니다!">
-    <button class="gold" id="noticeGo">발송</button>
-    <h3 style="margin-top:14px;">🖼️ 환수 이미지 일괄 업로드</h3>
-    <div class="stat">파일명 규칙: 001.png ~ 151.png (번호로 자동 매칭 → Storage 업로드 → 전원 앱 자동 반영)</div>
-    <input id="imgFiles" type="file" multiple accept="image/*">
-    <button class="gold" id="imgGo">업로드 시작</button>
-    <div class="log" id="imgLog"></div>
+<!-- 운영 -->
+<div class="tabview on" id="t-ops">
+  <div class="phase-big p-lobby" id="phaseBig">
+    <div class="ph-name" id="phName">연결 중…</div>
+    <div class="ph-desc" id="phDesc"></div>
+    <div class="ph-timer" id="phTimer"></div>
   </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>라운드 전환</h3>
+      <div id="phaseBtns">
+        <button data-ph="lobby">⏳ 대기</button>
+        <button data-ph="round1">🌲 1라운드 시작</button>
+        <button data-ph="round2">⚔️ 2라운드 시작</button>
+        <button data-ph="ended" class="red">🏁 게임 종료</button>
+        <button data-ph="free">🧪 자유 모드</button>
+      </div>
+      <div class="stat">전환 시 전 참가자 앱에 <b>팝업 알림</b>이 뜨고, 라운드 외 기능이 잠깁니다.</div>
+      <div class="row2" style="margin-top:6px;">
+        <input id="timerMin" type="number" placeholder="분" style="width:90px;">
+        <button id="timerSet" class="gold">타이머 설정</button>
+        <button id="timerClear" class="red">타이머 해제</button>
+      </div>
+      <div class="stat" id="timerPresetStat">타이머 미설정 — 라운드 시작 시 타이머 없이 진행됩니다</div>
+    </div>
+    <div class="card">
+      <h3>대형 스크린 &amp; 치유의 샘</h3>
+      <div class="row2"><span class="stat" style="width:90px;">스크린 모드</span>
+        <button data-sc="leaderboard" id="scLb">🏆 리더보드</button>
+        <button data-sc="heal" id="scHeal">💧 치유의 샘</button></div>
+      <div class="row2" style="margin-top:8px;"><span class="stat" style="width:90px;">치유의 샘</span>
+        <button id="healOpen" class="gold">샘 열기</button>
+        <button id="healClose" class="red">샘 닫기</button></div>
+      <div class="stat" style="margin-top:8px;">상태: <b id="healStat">-</b> · 현재 코드 <span class="code-live" id="healCode">------</span></div>
+      <div class="stat">※ 코드는 대형 스크린이 '치유의 샘' 모드로 켜져 있는 동안 15초마다 생성됩니다.</div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>📣 공지 발송 — 전 참가자 팝업 + 피드 + 스크린 티커</h3>
+    <div class="row2"><input id="noticeIn" placeholder="예: 5분 후 2라운드가 시작됩니다!" style="flex:1;">
+    <button class="gold" id="noticeGo" style="width:120px;">발송</button></div>
+  </div>
+</div>
 
-  <div class="card" style="grid-column:1/-1;">
+<!-- 참가자 -->
+<div class="tabview" id="t-players">
+  <div class="card">
     <h3>👥 참가자 모니터링 <span class="tag" id="pCount"></span></h3>
-    <table><thead><tr><th>이름</th><th>점수</th><th>보유</th><th>기절</th><th>도감</th><th>관리</th></tr></thead>
+    <div class="stat">이름을 클릭하면 상세 화면(퀴즈 이력 · 환수 부여/회수)이 열립니다.</div>
+    <table><thead><tr><th>이름</th><th>직위</th><th>점수</th><th>승-패</th><th>승률</th><th>퀴즈 정/오</th><th>보유</th><th>기절</th><th>관리</th></tr></thead>
     <tbody id="pTable"></tbody></table>
   </div>
+</div>
 
-  <div class="card" style="grid-column:1/-1;">
-    <h3>❓ 문제은행 관리 <span class="tag" id="qCount"></span></h3>
+<!-- 문제은행 -->
+<div class="tabview" id="t-quiz">
+  <div class="card">
+    <h3>📊 엑셀로 문항 일괄 업로드 <span class="tag">권장</span></h3>
+    <div class="stat">열 순서: <b>문제 | 보기1(정답) | 보기2 | 보기3 | 보기4 | 난이도(쉬움/중간/어려움) | 분류</b> — 1행은 제목행</div>
     <div class="row2">
-      <button class="gold" id="qUploadDefault">기본 60문항 업로드 (앱 내장분)</button>
-      <button id="qExport">전체 내보내기(복사)</button>
-      <button class="red" id="qClear">전체 삭제</button>
+      <button id="xlsxTemplate">📥 엑셀 양식 다운로드</button>
+      <input id="xlsxFile" type="file" accept=".xlsx,.xls" style="width:auto;flex:1;">
+      <button class="gold" id="xlsxGo">업로드</button>
     </div>
-    <div style="margin:10px 0;">
-      <b style="font-size:.85rem;">문항 추가</b>
+    <div class="log" id="xlsxLog" style="display:none;"></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <h3>문항 개별 추가</h3>
       <input id="qQ" placeholder="문제">
       <div class="row2"><input id="qC0" placeholder="보기1 (정답)"><input id="qC1" placeholder="보기2"></div>
       <div class="row2"><input id="qC2" placeholder="보기3"><input id="qC3" placeholder="보기4"></div>
       <div class="row2">
-        <select id="qD" style="width:160px;"><option value="easy">쉬움(C/B)</option><option value="mid">중간(A)</option><option value="hard">어려움(S)</option></select>
-        <button class="gold" id="qAdd">추가</button>
+        <select id="qD" style="width:150px;"><option value="easy">쉬움(C/B)</option><option value="mid">중간(A)</option><option value="hard">어려움(S)</option></select>
+        <button class="gold" id="qAdd">추가</button><button id="qEditCancel" style="display:none;">편집 취소</button></div>
+      <div class="stat">보기1 칸에 정답을 넣으세요. 앱에서 보기 순서는 자동 셔플됩니다.</div>
+    </div>
+    <div class="card">
+      <h3>기타 도구</h3>
+      <button class="gold" id="qUploadDefault">기본 60문항 업로드</button>
+      <button id="qExport">전체 내보내기(복사)</button>
+      <button class="red" id="qClear">전체 삭제</button>
+      <details style="margin-top:8px;"><summary class="stat" style="cursor:pointer;">JSON 일괄 업로드 (고급)</summary>
+        <textarea id="qBulk" placeholder='[{"question":"...","choices":["정답","오답","오답","오답"],"answer":0,"difficulty":"easy"}]'></textarea>
+        <button id="qBulkGo">JSON 업로드</button></details>
+    </div>
+  </div>
+  <div class="card"><h3>문항 목록 <span class="tag" id="qCount"></span></h3>
+    <div id="qList" style="max-height:380px;overflow-y:auto;"></div></div>
+</div>
+
+<!-- 환수 관리 -->
+<div class="tabview" id="t-mon">
+  <div class="grid2">
+    <div class="card">
+      <h3>🐉 환수 목록 <span class="tag" id="mCount"></span></h3>
+      <input id="mSearch" placeholder="번호 또는 이름 검색 (예: 001, 껌숯)">
+      <div id="mList" style="max-height:460px;overflow-y:auto;margin-top:6px;"></div>
+    </div>
+    <div class="card">
+      <h3 id="mEditTitle">✏️ 환수 편집 — 좌측에서 선택하세요</h3>
+      <div id="mEdit" style="display:none;">
+        <div class="row2"><input id="mName" placeholder="이름" style="flex:1;">
+          <select id="mType" style="width:110px;"><option>불</option><option>물</option><option>풀</option><option>철</option><option>돌</option><option>풍</option><option>에스퍼</option></select>
+          <select id="mGrade" style="width:80px;"><option>C</option><option>B</option><option>A</option><option>S</option></select>
+          <input id="mHp" type="number" placeholder="HP" style="width:80px;"></div>
+        <div class="stat" style="margin-top:6px;">스킬 3종 (가위/바위/보 · 이름 · 공격력)</div>
+        <div class="row2">✂️ <input id="sk0n" placeholder="가위 스킬명" style="flex:1;"><input id="sk0a" type="number" style="width:80px;"></div>
+        <div class="row2">✊ <input id="sk1n" placeholder="바위 스킬명" style="flex:1;"><input id="sk1a" type="number" style="width:80px;"></div>
+        <div class="row2">✋ <input id="sk2n" placeholder="보 스킬명" style="flex:1;"><input id="sk2a" type="number" style="width:80px;"></div>
+        <textarea id="mDex" placeholder="도감 서사" style="min-height:120px;font-family:inherit;font-size:.85rem;"></textarea>
+        <div class="row2">
+          <input id="mEvoTo" placeholder="진화처 번호(예: 002, 없으면 비움)" style="flex:1;">
+          <input id="mEvoWins" type="number" placeholder="필요 승수" style="width:110px;"></div>
+        <div class="row2">
+          <label class="stat"><input type="checkbox" id="mWild" style="width:auto;"> 야생 출현</label>
+          <label class="stat"><input type="checkbox" id="mSafari" style="width:auto;"> 사파리 한정</label></div>
+        <div class="row2" style="margin-top:8px;">
+          <button class="gold" id="mSave">💾 저장 (전 참가자 즉시 반영)</button>
+          <button id="mRevert">원본 복원</button>
+          <button class="red" id="mDelete">🗑️ 비활성화(삭제)</button></div>
       </div>
-      <div class="stat">※ 보기1 칸에 정답을 넣으세요. 앱에서 보기 순서는 자동 셔플됩니다.</div>
+      <hr style="border-color:var(--line);margin:14px 0;">
+      <h3>➕ 신규 환수 추가</h3>
+      <div class="stat">다음 번호(152~)로 자동 생성됩니다. 좌측에서 선택해 상세 편집하세요.</div>
+      <div class="row2"><input id="newName" placeholder="이름" style="flex:1;">
+        <select id="newType" style="width:110px;"><option>불</option><option>물</option><option>풀</option><option>철</option><option>돌</option><option>풍</option><option>에스퍼</option></select>
+        <select id="newGrade" style="width:80px;"><option>C</option><option>B</option><option>A</option><option>S</option></select>
+        <button class="gold" id="newGo">추가</button></div>
     </div>
-    <div>
-      <b style="font-size:.85rem;">JSON 일괄 업로드</b>
-      <textarea id="qBulk" placeholder='[{"id":"q901","question":"...","choices":["정답","오답","오답","오답"],"answer":0,"difficulty":"easy","category":"직무"}]'></textarea>
-      <button id="qBulkGo">일괄 업로드</button>
+  </div>
+  <div class="card">
+    <h3>🖼️ 환수 이미지 일괄 업로드</h3>
+    <div class="stat">파일명 규칙: 001.png ~ 151.png (번호 자동 매칭 → 전원 앱 자동 반영)</div>
+    <div class="row2"><input id="imgFiles" type="file" multiple accept="image/*" style="width:auto;flex:1;">
+    <button class="gold" id="imgGo">업로드 시작</button></div>
+    <div class="log" id="imgLog" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- 설정 -->
+<div class="tabview" id="t-set">
+  <div class="grid2">
+    <div class="card">
+      <h3>🔑 입장코드</h3>
+      <div class="stat">참가자는 이 코드를 입력해야 입장할 수 있습니다. 비워두면 코드 없이 입장 가능.</div>
+      <div class="row2"><input id="entryIn" placeholder="예: LGCHEM24" style="flex:1;">
+      <button class="gold" id="entrySet">설정</button><button id="entryClear">해제</button></div>
+      <div class="stat">현재: <b id="entryNow">-</b></div>
     </div>
-    <div id="qList" style="margin-top:10px;max-height:340px;overflow-y:auto;"></div>
+    <div class="card">
+      <h3>🧹 리허설/초기화 도구 <span class="tag">주의</span></h3>
+      <button class="red" id="rstPlayers">참가자 전체 삭제</button>
+      <button class="red" id="rstFeed">피드·채팅 비우기</button>
+      <button id="rstBattles">배틀방 청소</button>
+      <button class="red" id="rstAll">전체 초기화 (리허설 후)</button>
+    </div>
   </div>
 </div>
 </div>
+<div id="pModal" style="display:none;position:fixed;inset:0;background:#000b;z-index:60;overflow-y:auto;padding:24px;">
+  <div class="card" style="max-width:820px;margin:0 auto;">
+    <div class="row2" style="justify-content:space-between;align-items:center;">
+      <h3 id="pmTitle" style="margin:0;">참가자 상세</h3><button id="pmClose">닫기 ✕</button></div>
+    <div id="pmBody"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCjv4qdxXc7eN7lzuzTrV-pw10AKbwDY4k",
@@ -123,134 +249,356 @@ const FIREBASE_CONFIG = {
   storageBucket: "hsdb-1.firebasestorage.app",
   messagingSenderId: "979141882179",
   appId: "1:979141882179:web:2d83e1e206a89d8982fff6",
-  measurementId: "G-LB5HJT6DQ4"};
+  measurementId: "G-LB5HJT6DQ4"
+};
 const ADMIN_PASS = "hwansu2026"; /* ★ 원하는 암호로 변경 ★ */
 const DEFAULT_QUIZ = [{"id":"q001","question":"태양계에서 가장 큰 행성은?","choices":["토성","목성","천왕성","해왕성"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q002","question":"물의 화학식으로 옳은 것은?","choices":["H₂O","CO₂","O₃","NaCl"],"answer":0,"difficulty":"easy","category":"일반상식"},{"id":"q003","question":"훈민정음을 창제한 조선의 왕은?","choices":["태종","세조","세종","성종"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q004","question":"세계에서 가장 넓은 대양은?","choices":["대서양","인도양","태평양","북극해"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q005","question":"빛의 삼원색에 해당하지 않는 색은?","choices":["빨강","초록","파랑","노랑"],"answer":3,"difficulty":"easy","category":"일반상식"},{"id":"q006","question":"올림픽 오륜기에 있는 원의 개수는?","choices":["4개","5개","6개","7개"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q007","question":"지구에서 가장 가까운 '별(항성)'은?","choices":["달","북극성","태양","시리우스"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q008","question":"표준 피아노의 건반 수는?","choices":["76개","88개","92개","100개"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q009","question":"축구 경기에서 한 팀의 출전 인원은?","choices":["9명","10명","11명","12명"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q010","question":"대한민국을 상징하는 나라꽃은?","choices":["진달래","개나리","무궁화","목련"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q011","question":"에펠탑이 있는 도시는?","choices":["런던","로마","베를린","파리"],"answer":3,"difficulty":"easy","category":"일반상식"},{"id":"q012","question":"『동의보감』을 편찬한 조선의 의학자는?","choices":["허준","이제마","장영실","정약용"],"answer":0,"difficulty":"easy","category":"일반상식"},{"id":"q013","question":"1년 중 낮이 가장 긴 절기는?","choices":["춘분","하지","추분","동지"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q014","question":"대한민국 국회의원의 임기는?","choices":["2년","4년","5년","6년"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q015","question":"무지개 색깔은 통상 몇 가지로 표현되는가?","choices":["5가지","6가지","7가지","8가지"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q016","question":"현존하는 세계에서 가장 오래된 금속활자 인쇄본은?","choices":["직지심체요절","팔만대장경","무구정광대다라니경","훈민정음 해례본"],"answer":0,"difficulty":"easy","category":"일반상식"},{"id":"q017","question":"식물의 광합성에 필요한 재료가 아닌 것은?","choices":["이산화탄소","물","빛","산소"],"answer":3,"difficulty":"easy","category":"일반상식"},{"id":"q018","question":"남한에서 가장 긴 강은?","choices":["한강","낙동강","금강","영산강"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q019","question":"베토벤 교향곡 9번의 별칭은?","choices":["운명","전원","합창","영웅"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q020","question":"컴퓨터의 CPU를 우리말로 풀면?","choices":["중앙처리장치","주기억장치","보조기억장치","그래픽처리장치"],"answer":0,"difficulty":"easy","category":"일반상식"},{"id":"q021","question":"태극기의 4괘(건곤감리)에 속하지 않는 것은?","choices":["건(乾)","곤(坤)","태(兌)","리(離)"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q022","question":"세계 최초로 종두법(천연두 백신)을 개발한 인물은?","choices":["파스퇴르","에드워드 제너","플레밍","코흐"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q023","question":"소리가 가장 빠르게 전달되는 매질은?","choices":["공기","물","철","진공"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q024","question":"지진이 방출한 에너지의 크기를 나타내는 용어는?","choices":["진도","규모","진폭","주기"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q025","question":"대한민국 수도권에 포함되지 않는 도시는?","choices":["서울","인천","수원","대전"],"answer":3,"difficulty":"easy","category":"일반상식"},{"id":"q026","question":"사랑니를 포함한 사람의 영구치 개수는?","choices":["28개","30개","32개","34개"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q027","question":"세계에서 인구가 가장 많은 대륙은?","choices":["아프리카","아시아","유럽","아메리카"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q028","question":"조선을 건국한 첫 번째 왕은?","choices":["태조","정종","태종","세종"],"answer":0,"difficulty":"easy","category":"일반상식"},{"id":"q029","question":"1기압에서 물이 어는 섭씨 온도는?","choices":["-4도","0도","4도","10도"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q030","question":"대한민국 만 원권 지폐에 그려진 인물은?","choices":["이순신","세종대왕","신사임당","퇴계 이황"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q031","question":"다음 중 대한민국의 국경일이 아닌 날은?","choices":["한글날","광복절","개천절","식목일"],"answer":3,"difficulty":"easy","category":"일반상식"},{"id":"q032","question":"바다에 접하지 않은 대한민국의 도(道)는?","choices":["강원특별자치도","충청북도","전라남도","경상남도"],"answer":1,"difficulty":"easy","category":"일반상식"},{"id":"q033","question":"화재 발생 시 대한민국의 신고 번호는?","choices":["112","114","119","120"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q034","question":"지구의 유일한 자연 위성은?","choices":["달","화성","금성","혜성"],"answer":0,"difficulty":"easy","category":"일반상식"},{"id":"q035","question":"세계 대륙 중 면적이 가장 작은 대륙은?","choices":["유럽","남극","오세아니아","남아메리카"],"answer":2,"difficulty":"easy","category":"일반상식"},{"id":"q036","question":"'보이지 않는 손'이라는 개념을 주창한 경제학자는?","choices":["케인스","애덤 스미스","마르크스","슘페터"],"answer":1,"difficulty":"mid","category":"일반상식"},{"id":"q037","question":"인체에서 가장 큰 장기(기관)는?","choices":["간","폐","뇌","피부"],"answer":3,"difficulty":"mid","category":"일반상식"},{"id":"q038","question":"세계에서 국토 면적이 두 번째로 넓은 나라는?","choices":["중국","미국","캐나다","브라질"],"answer":2,"difficulty":"mid","category":"일반상식"},{"id":"q039","question":"'전체 결과의 80%가 20%의 원인에서 나온다'는 법칙은?","choices":["파레토 법칙","머피의 법칙","무어의 법칙","피터의 법칙"],"answer":0,"difficulty":"mid","category":"일반상식"},{"id":"q040","question":"대한민국 최초의 노벨상 수상자는?","choices":["김대중","이휘소","황순원","한강"],"answer":0,"difficulty":"mid","category":"일반상식"},{"id":"q041","question":"조선왕조실록이 등재된 유네스코 유산 분류는?","choices":["세계문화유산","세계기록유산","인류무형문화유산","세계자연유산"],"answer":1,"difficulty":"mid","category":"일반상식"},{"id":"q042","question":"빛이 1년 동안 나아가는 거리를 나타내는 단위는?","choices":["광년","파섹","천문단위","해리"],"answer":0,"difficulty":"mid","category":"일반상식"},{"id":"q043","question":"삼권분립의 삼권에 해당하지 않는 것은?","choices":["입법","행정","사법","언론"],"answer":3,"difficulty":"mid","category":"일반상식"},{"id":"q044","question":"GDP의 우리말 명칭은?","choices":["국민총생산","국내총생산","국민순소득","국내순투자"],"answer":1,"difficulty":"mid","category":"일반상식"},{"id":"q045","question":"높은 산 위에서 물의 끓는점은 어떻게 되는가?","choices":["높아진다","낮아진다","변화 없다","끓지 않는다"],"answer":1,"difficulty":"mid","category":"일반상식"},{"id":"q046","question":"바이올린족 현악기 중 가장 크고 낮은 음역의 악기는?","choices":["비올라","첼로","더블베이스","하프"],"answer":2,"difficulty":"mid","category":"일반상식"},{"id":"q047","question":"현재 전승되는 판소리 다섯 마당에 속하지 않는 것은?","choices":["심청가","수궁가","적벽가","배비장타령"],"answer":3,"difficulty":"mid","category":"일반상식"},{"id":"q048","question":"강한 경쟁자의 등장이 조직 전체에 활력을 불어넣는 현상은?","choices":["메기 효과","낙수 효과","분수 효과","기저 효과"],"answer":0,"difficulty":"mid","category":"일반상식"},{"id":"q049","question":"사람 몸에서 뼈가 가장 많이 모여 있는 부위는?","choices":["손","척추","두개골","골반"],"answer":0,"difficulty":"mid","category":"일반상식"},{"id":"q050","question":"OEM의 의미로 옳은 것은?","choices":["주문자 상표 부착 생산","자체 브랜드 개발 생산","기술 이전 생산","공동 연구 개발"],"answer":0,"difficulty":"mid","category":"일반상식"},{"id":"q051","question":"'넛지(Nudge)' 개념으로 노벨경제학상을 수상한 학자는?","choices":["대니얼 카너먼","리처드 세일러","게리 베커","폴 크루그먼"],"answer":1,"difficulty":"hard","category":"일반상식"},{"id":"q052","question":"국보 훈민정음 해례본(간송본)을 소장한 곳은?","choices":["국립중앙박물관","규장각","간송미술관","국립한글박물관"],"answer":2,"difficulty":"hard","category":"일반상식"},{"id":"q053","question":"플라시보 효과의 반대로, 부정적 믿음이 실제 악영향을 주는 현상은?","choices":["노시보 효과","피그말리온 효과","호손 효과","바넘 효과"],"answer":0,"difficulty":"hard","category":"일반상식"},{"id":"q054","question":"인간이 안정적으로 관계를 유지할 수 있는 집단 크기의 한계로 제시된 '던바의 수'는?","choices":["약 50명","약 150명","약 300명","약 500명"],"answer":1,"difficulty":"hard","category":"일반상식"},{"id":"q055","question":"1건의 중대사고 뒤에 29건의 경미한 사고, 300건의 징후가 있다는 법칙은?","choices":["하인리히 법칙","깨진 유리창 법칙","파킨슨 법칙","그레셤 법칙"],"answer":0,"difficulty":"hard","category":"일반상식"},{"id":"q056","question":"대한민국 애국가를 작곡한 인물은?","choices":["홍난파","안익태","윤이상","현제명"],"answer":1,"difficulty":"hard","category":"일반상식"},{"id":"q057","question":"'냉혹한 현실을 직시하되 최후의 승리를 확신하라'는 스톡데일 패러독스의 유래는?","choices":["2차대전 노르망디 상륙작전","베트남전 포로 생활","아폴로 13호 사고","섀클턴 남극 탐험"],"answer":1,"difficulty":"hard","category":"일반상식"},{"id":"q058","question":"'몰입(Flow)' 이론을 정립한 심리학자는?","choices":["미하이 칙센트미하이","에이브러햄 매슬로","마틴 셀리그만","캐럴 드웩"],"answer":0,"difficulty":"hard","category":"일반상식"},{"id":"q059","question":"예측 불가능한 극단적 사건을 뜻하는 『블랙 스완』의 저자는?","choices":["말콤 글래드웰","나심 니콜라스 탈레브","유발 하라리","짐 콜린스"],"answer":1,"difficulty":"hard","category":"일반상식"},{"id":"q060","question":"유럽에서 가장 오래된 대학으로 꼽히는 곳은?","choices":["옥스퍼드 대학","파리 대학","볼로냐 대학","살라망카 대학"],"answer":2,"difficulty":"hard","category":"일반상식"}];
+const BASE_MONSTERS = [{"id":"001","name":"껌숯퍼피","type":"불","grade":"C","hp":30,"isFinal":false,"evolveTo":"002","skills":[{"name":"불티할퀴기","rps":"가위","atk":11},{"name":"숯박치기","rps":"바위","atk":13},{"name":"재뿌리기","rps":"보","atk":9}],"dex":"숯을 껌처럼 씹어야 마음이 놓이는 강아지. 좋아하는 사람의 신발을 물어다 숨기는 버릇이 있는데, 신발에서 은은한 훈연 냄새가 나면 이 녀석 소행이다. 꼬리 끝 불씨가 아직 작아 비 오는 날엔 시무룩하게 꼬리를 감춘다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"002","name":"불꽃개","type":"불","grade":"B","hp":50,"isFinal":false,"evolveTo":"003","skills":[{"name":"화염송곳니","rps":"가위","atk":15},{"name":"이글박치기","rps":"바위","atk":18},{"name":"불갈기폭발","rps":"보","atk":13}],"dex":"지켜야 할 상대가 생기면 목 갈기 불꽃이 두 배로 커진다. 어릴 적 숨겨둔 신발을 여태 기억하고 있다가, 진화한 뒤 주인에게 슬쩍 돌려준다는 목격담이 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"003","name":"홍염신견","type":"불","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"홍염참","rps":"가위","atk":22},{"name":"작열앞발","rps":"바위","atk":20},{"name":"화염해방","rps":"보","atk":18}],"dex":"마을을 화마에게서 지키던 붉은 개가 신이 되었다고 전해진다. 새벽마다 동쪽을 향해 길게 짖는데, 그 소리를 들은 사람은 그날 하루 나쁜 일을 피한다고 한다. 위엄 넘치는 겉모습과 달리 여전히 숯 씹는 버릇을 못 고쳤다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"004","name":"차콜임프","type":"불","grade":"C","hp":30,"isFinal":false,"evolveTo":"005","skills":[{"name":"숯긁기","rps":"가위","atk":9},{"name":"숯덩이던지기","rps":"바위","atk":11},{"name":"검은연기","rps":"보","atk":13}],"dex":"아궁이 불씨가 완전히 꺼지기 직전, 마지막 온기에서 태어난다. 부엌 근처를 맴돌며 음식 냄새 훔쳐 맡는 게 낙이지만, 정작 뜨거운 음식은 잘 못 먹는다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"005","name":"잉걸도깨비","type":"불","grade":"B","hp":50,"isFinal":false,"evolveTo":"006","skills":[{"name":"잉걸베기","rps":"가위","atk":18},{"name":"화로내려찍기","rps":"바위","atk":15},{"name":"도깨비불군무","rps":"보","atk":13}],"dex":"다 꺼진 줄 알았던 모닥불이 새벽에 다시 타오른다면 이 녀석이 밤새 불씨를 지킨 것이다. 씨름을 좋아해서 자기를 이긴 상대에겐 잉걸불 하나를 선물로 준다. 그 불씨는 평생 꺼지지 않는다고 한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"006","name":"겁화천왕","type":"불","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"천왕참","rps":"가위","atk":24},{"name":"멸화철퇴","rps":"바위","atk":29},{"name":"겁화해방","rps":"보","atk":20}],"dex":"백 년에 한 번 깨어나 산 하나를 태우고 다시 잠든다. 그런데 불탄 자리엔 이듬해 가장 기름진 숲이 돋아나기에, 옛사람들은 그를 파괴의 신이자 개간의 신으로 함께 모셨다. 잠든 얼굴이 의외로 앳되다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"007","name":"페퍼치크","type":"불","grade":"C","hp":30,"isFinal":false,"evolveTo":"008","skills":[{"name":"톡쏘기부리","rps":"가위","atk":13},{"name":"병아리돌진","rps":"바위","atk":11},{"name":"매운깃털","rps":"보","atk":9}],"dex":"알에서 깰 때 재채기를 하며 나온다. 삐약 소리에도 매운 기운이 섞여 가까이서 들으면 눈이 맵다. 겁이 많아 놀라면 깃털을 곤두세우는데, 그 모습이 영락없는 홍고추다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"008","name":"횃불수탉","type":"불","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"볏칼날","rps":"가위","atk":15},{"name":"홰치기강타","rps":"바위","atk":13},{"name":"새벽횃불","rps":"보","atk":18}],"dex":"새벽에 이 녀석이 홰를 치면 볏의 불꽃이 마을의 첫 등불이 된다. 자기 울음보다 먼저 일어난 사람을 라이벌로 여겨, 다음 날엔 기어코 더 일찍 운다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"009","name":"캔들키티","type":"불","grade":"C","hp":30,"isFinal":false,"evolveTo":"010","skills":[{"name":"촛농할퀴기","rps":"가위","atk":11},{"name":"밀랍박치기","rps":"바위","atk":9},{"name":"심지태우기","rps":"보","atk":13}],"dex":"꼬리 끝 촛불이 제 수명이라 믿어서 바람 부는 날엔 꼬리를 몸에 꼭 감고 다닌다. 어둠을 무서워하는 사람 곁에 슬그머니 다가와 앉아주는 다정함이 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"010","name":"등불묘","type":"불","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"그림자베기","rps":"가위","atk":18},{"name":"등불내리치기","rps":"바위","atk":13},{"name":"도깨비등불","rps":"보","atk":15}],"dex":"밤길 잃은 나그네 앞에 나타나 등불을 흔든다. 마음이 나쁜 자는 홀려서 밤새 같은 자리를 맴돌고, 선한 자는 집 앞까지 배웅받는다. 배웅값으로 생선 한 마리를 정확히 요구한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"011","name":"레드뉴트","type":"불","grade":"C","hp":30,"isFinal":false,"evolveTo":"012","skills":[{"name":"꼬리불채찍","rps":"가위","atk":13},{"name":"바위틈돌진","rps":"바위","atk":9},{"name":"뜨거운숨","rps":"보","atk":11}],"dex":"젖은 바위틈에 살면서도 몸의 불빛이 꺼지지 않는 신기한 도롱뇽. 위험을 느끼면 꼬리를 떼어놓고 도망치는데, 떨어진 꼬리가 한동안 등불처럼 빛나 추격자를 홀린다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"012","name":"화염도롱뇽","type":"불","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"화염꼬리날","rps":"가위","atk":18},{"name":"용암웅덩이찍기","rps":"바위","atk":11},{"name":"발화점막","rps":"보","atk":18}],"dex":"옛 연금술사들이 \"불 속에 사는 정령\"이라 믿었던 전설의 원형. 사실은 불을 무서워하지 않을 뿐인데, 오해가 쌓여 전설이 되었다는 걸 본인도 은근히 즐기는 눈치다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"013","name":"용암달팽이","type":"불","grade":"B","hp":50,"isFinal":false,"evolveTo":"014","skills":[{"name":"껍질톱니","rps":"가위","atk":13},{"name":"용암들이받기","rps":"바위","atk":18},{"name":"마그마분출","rps":"보","atk":15}],"dex":"세상에서 가장 느리지만 가장 확실하게 자기 길을 남긴다. 지나간 자리가 까맣게 그을려 단단히 굳기에, 산길의 오래된 포장은 죄다 이 녀석 작품이라는 우스개가 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"014","name":"용암괴","type":"불","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"흑요석날","rps":"가위","atk":18},{"name":"용암주먹","rps":"바위","atk":24},{"name":"대분화","rps":"보","atk":18}],"dex":"식으면 끝이라고 믿어 잠시도 쉬지 않고 몸을 끓인다. 하지만 아주 가끔, 눈 오는 날엔 가만히 서서 눈송이가 제 몸에 닿아 사라지는 걸 오래 지켜보곤 한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"015","name":"화접유충","type":"불","grade":"B","hp":50,"isFinal":false,"evolveTo":"016","skills":[{"name":"실끊기","rps":"가위","atk":15},{"name":"고치돌진","rps":"바위","atk":15},{"name":"가루흩날리기","rps":"보","atk":15}],"dex":"뜨거운 고치 속에서 우화의 날만을 기다린다. 고치에 귀를 대면 작은 노랫소리가 들린다는데, 끝까지 들은 사람은 아직 없다. 끝까지 들으면 우화를 함께 보게 된다는 전승만 남아 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"016","name":"염화나방","type":"불","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"화린베기","rps":"가위","atk":20},{"name":"열풍돌진","rps":"바위","atk":18},{"name":"초신성인분","rps":"보","atk":22}],"dex":"불꽃을 향해 날아드는 게 아니라 불꽃이 이 녀석을 향해 몸을 기울인다. 날개에서 떨어지는 가루는 닿는 곳마다 작은 불씨를 남기기에, 지나간 밤하늘엔 불티의 길이 그려진다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"017","name":"적호새끼","type":"불","grade":"A","hp":75,"isFinal":false,"evolveTo":"018","skills":[{"name":"아기발톱","rps":"가위","atk":20},{"name":"앞발치기","rps":"바위","atk":22},{"name":"으르렁불꽃","rps":"보","atk":18}],"dex":"아직 포효 대신 재채기를 하지만 그 재채기에도 불똥이 튄다. 제 발보다 큰 발자국을 발견하면 그 위에 제 발을 가만히 포개보는 버릇이 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"018","name":"염제대호","type":"불","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"염제조아","rps":"가위","atk":26},{"name":"백수의일격","rps":"바위","atk":26},{"name":"산화포효","rps":"보","atk":20}],"dex":"모든 들짐승이 그 앞에서 고개를 숙인다. 일 년에 단 하루, 첫눈 오는 날에만 온몸의 불을 거두고 조용히 산등성이를 걷는다. 그날 눈 위에 찍힌 발자국을 본 사람은 평생 행운이 따른다고 한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"019","name":"아지랑여우","type":"불","grade":"B","hp":50,"isFinal":false,"evolveTo":null,"skills":[{"name":"아지랑이할퀴기","rps":"가위","atk":13},{"name":"신열박치기","rps":"바위","atk":15},{"name":"아지랑이장막","rps":"보","atk":18}],"dex":"한여름 아스팔트 위 아지랑이 속에 숨어 지나가는 사람들을 구경한다. 부채질을 해주면 좋아서 꼬리를 아홉 번 흔드는데, 아홉 번을 다 세고 나면 어느새 사라지고 없다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"020","name":"도깨비화","type":"불","grade":"A","hp":75,"isFinal":false,"evolveTo":null,"skills":[{"name":"귀화베기","rps":"가위","atk":22},{"name":"방망이내리찍기","rps":"바위","atk":20},{"name":"백귀야행","rps":"보","atk":18}],"dex":"무덤가의 푸른 불꽃은 죽은 이의 혼이 아니라 이 녀석의 장난이다. 무서운 이야기의 주인공이 된 게 은근히 자랑이라, 담력시험을 온 사람들 뒤를 신나서 졸졸 따라다닌다.","category":"일반","wildSpawn":true,"safariOnly":true,"evolveWins":null},{"id":"021","name":"화산제","type":"불","grade":"S","hp":105,"isFinal":false,"evolveTo":null,"skills":[{"name":"용암검무","rps":"가위","atk":24},{"name":"분화구강타","rps":"바위","atk":26},{"name":"화쇄류","rps":"보","atk":22}],"dex":"화산이 잠든 동안 그 분노를 대신 짊어진 존재. 그가 화를 다스려주는 덕에 화산이 잠잠하다는 사실을 아는 이는 드물다. 어깨의 불꽃은 화가 날 때가 아니라 슬플 때 더 크게 타오른다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"022","name":"아쿠아스핀","type":"물","grade":"C","hp":30,"isFinal":false,"evolveTo":"023","skills":[{"name":"앞니갉기","rps":"가위","atk":11},{"name":"등딱지찍기","rps":"바위","atk":13},{"name":"물장구","rps":"보","atk":9}],"dex":"연못 위를 팽이처럼 빙글빙글 돌며 헤엄친다. 너무 오래 돌다 어지러워 물풀에 부딪히는 게 귀여운 실수. 이 녀석이 지나간 자리엔 잠시 작은 소용돌이가 남아, 낙엽들이 그 위에서 함께 맴돈다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"023","name":"소용돌치","type":"물","grade":"B","hp":50,"isFinal":false,"evolveTo":"024","skills":[{"name":"지느러미날","rps":"가위","atk":15},{"name":"소용돌이돌진","rps":"바위","atk":18},{"name":"물보라","rps":"보","atk":13}],"dex":"헤엄친 자리마다 작은 소용돌이를 남기는 젊은 급류의 화신. 물길을 거스르는 연습을 매일 하는데, 실패해도 다시 상류로 향하는 끈기가 있다. 어린 시절 팽이처럼 돌던 버릇이 이제는 소용돌이를 부르는 힘이 되었다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"024","name":"해류제왕","type":"물","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"조류참","rps":"가위","atk":22},{"name":"해구내리누르기","rps":"바위","atk":20},{"name":"대해류","rps":"보","atk":18}],"dex":"지느러미 한 번에 바다의 물길이 바뀐다고 전해지는 심해의 지배자. 거대한 몸집과 달리 작은 물고기들을 지느러미 그늘에 품어 폭풍우로부터 지킨다. 소용돌이를 부르던 어린 날의 끈기가, 이제 대양의 흐름을 다스리는 위엄이 되었다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"025","name":"미스트젤리","type":"물","grade":"C","hp":30,"isFinal":false,"evolveTo":"026","skills":[{"name":"이슬튕기기","rps":"가위","atk":9},{"name":"물방울찍기","rps":"바위","atk":11},{"name":"보슬비","rps":"보","atk":13}],"dex":"안개 낀 새벽에만 모습을 드러내는 아기 해파리. 햇살이 퍼지면 부끄러운 듯 물안개 속으로 스며 사라진다. 투명한 몸 안에서 이슬방울이 별처럼 떠다녀, 이른 아침 풀잎 위에서 만나면 하루 종일 좋은 일이 생긴다는 이야기가 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"026","name":"안개해파리","type":"물","grade":"B","hp":50,"isFinal":false,"evolveTo":"027","skills":[{"name":"촉수채찍","rps":"가위","atk":15},{"name":"무리압박","rps":"바위","atk":13},{"name":"짙은안개","rps":"보","atk":18}],"dex":"안개가 짙은 날엔 뭍에서도 떠다닌다는 신비한 해파리. 무리 지어 이동할 때 뿜는 물안개가 온 포구를 하얗게 뒤덮는다. 사람들은 이 안개를 '바다가 잠시 숨을 고르는 것'이라 불렀다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"027","name":"심해용왕","type":"물","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"용왕참","rps":"가위","atk":26},{"name":"심해압착","rps":"바위","atk":24},{"name":"만리해일","rps":"보","atk":22}],"dex":"심해 궁전에서 모든 파도를 다스린다는 용왕. 천 년에 한 번 뭍으로 올라와 가뭄 든 땅에 비를 내려준다고 전해진다. 안개로 태어난 작은 생명이 대양의 왕이 되기까지, 바다는 그 성장을 묵묵히 지켜보았다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"028","name":"버블쉬림프","type":"물","grade":"C","hp":30,"isFinal":false,"evolveTo":"029","skills":[{"name":"집게싹둑","rps":"가위","atk":13},{"name":"거품펀치","rps":"바위","atk":9},{"name":"거품대포","rps":"보","atk":11}],"dex":"집게를 딱 소리 나게 부딪쳐 총알 같은 거품을 쏘는 새우. 사실 소리가 너무 커서 자기가 먼저 깜짝 놀라곤 한다. 조용한 밤바다에서 들리는 '딱딱' 소리는 이 녀석들이 나누는 대화라고 한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"029","name":"포말집게","type":"물","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"왕집게절단","rps":"가위","atk":18},{"name":"철갑집게","rps":"바위","atk":15},{"name":"포말폭발","rps":"보","atk":13}],"dex":"파도의 흰 거품은 이 녀석의 숨결이라 전해진다. 거대한 집게로 바위를 부수지만, 정작 작은 소라게에게는 제 집을 양보하는 너그러움이 있다. 딱총 소리에 놀라던 어린 시절과 달리, 이제는 그 소리로 파도를 부른다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"030","name":"리틀폴리","type":"물","grade":"C","hp":30,"isFinal":false,"evolveTo":"031","skills":[{"name":"꼬리치기","rps":"가위","atk":11},{"name":"머리찍기","rps":"바위","atk":9},{"name":"물총","rps":"보","atk":13}],"dex":"꼬리가 사라지는 날 진화가 시작된다는 걸 스스로도 아는 올챙이. 그날이 다가올수록 물웅덩이에 비친 제 모습을 자주 들여다본다. 물총 실력만큼은 어른 개구리 못지않아, 지나가는 소금쟁이를 곧잘 맞힌다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"031","name":"무지개개구리","type":"물","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"혀낚아채기","rps":"가위","atk":13},{"name":"개구리찍기","rps":"바위","atk":15},{"name":"무지개분수","rps":"보","atk":18}],"dex":"물총이 햇빛에 닿으면 등 위로 무지개가 떠오르는 개구리. 비 갠 오후, 이 녀석이 신나서 물을 뿜으면 작은 무지개가 여기저기 피어난다. 아이들은 그 무지개를 쫓아다니고, 개구리는 그런 아이들을 보며 더 신나게 물을 뿜는다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"032","name":"리버오터","type":"물","grade":"C","hp":30,"isFinal":false,"evolveTo":"033","skills":[{"name":"조개까기발톱","rps":"가위","atk":13},{"name":"배치기다이빙","rps":"바위","atk":11},{"name":"물장난세례","rps":"보","atk":9}],"dex":"물놀이가 세상에서 제일 좋은 수달. 배 위에 조개를 올려놓고 돌로 깨 먹는 영리함이 있지만, 먹다 말고 물장난을 치느라 자주 조개를 놓친다. 좋아하는 사람에게는 반질반질한 돌멩이를 선물로 가져다준다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"033","name":"폭포수달","type":"물","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"급류발톱","rps":"가위","atk":18},{"name":"폭포박치기","rps":"바위","atk":15},{"name":"소용돌이꼬리","rps":"보","atk":13}],"dex":"폭포를 거슬러 오르며 노는 물살의 명수. 가장 센 급류 지점을 골라 몸을 던지는 걸 즐기는데, 그 모습이 마치 물과 춤추는 것 같다. 어린 시절 선물하던 조약돌 습관은 여전해서, 폭포 아래엔 이 녀석이 모은 반질반질한 돌들이 쌓여 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"034","name":"유빙물범","type":"물","grade":"B","hp":50,"isFinal":false,"evolveTo":"035","skills":[{"name":"얼음발톱","rps":"가위","atk":13},{"name":"유빙박치기","rps":"바위","atk":18},{"name":"눈보라숨결","rps":"보","atk":15}],"dex":"유빙 조각을 뗏목처럼 타고 다니는 물범. 차가운 바다가 집이라 입김마저 서리가 되어 흩날린다. 혼자 떠다니다 다른 유빙을 만나면 반가워서 코를 비비는데, 그 바람에 두 유빙이 함께 떠내려가기도 한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"035","name":"빙하거상","type":"물","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"빙벽엄니","rps":"가위","atk":20},{"name":"빙하내리찍기","rps":"바위","atk":22},{"name":"절대영도","rps":"보","atk":18}],"dex":"거대한 엄니로 빙산을 쪼개 길을 내는 극지의 거인. 그 엄니는 수백 년 묵은 얼음보다 단단하다. 느릿한 걸음 뒤로 발자국이 얼어붙어, 뒤따르는 작은 생명들에게 안전한 얼음길이 되어준다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"036","name":"해무가오리","type":"물","grade":"B","hp":50,"isFinal":false,"evolveTo":"037","skills":[{"name":"꼬리침","rps":"가위","atk":15},{"name":"몸통낙하","rps":"바위","atk":13},{"name":"해무살포","rps":"보","atk":18}],"dex":"바다안개를 망토처럼 두르고 하늘을 나는 가오리. 넓은 몸을 펼치면 그 아래로 서늘한 그늘과 안개가 드리운다. 뜨거운 여름날, 이 녀석이 지나간 자리엔 잠시 바다 냄새 나는 시원한 바람이 분다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"037","name":"심연가오리","type":"물","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"심연가시","rps":"가위","atk":20},{"name":"해저강타","rps":"바위","atk":20},{"name":"암흑해류","rps":"보","atk":20}],"dex":"빛이 닿지 않는 심해에 사는 검은 그림자. 몸 가장자리의 푸른 발광만이 그 존재를 알려준다. 무섭게 생겼지만 실은 겁이 많아, 낯선 빛을 보면 먹물 같은 어둠을 뿜고 조용히 사라진다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"038","name":"백경치","type":"물","grade":"A","hp":75,"isFinal":false,"evolveTo":"039","skills":[{"name":"지느러미참","rps":"가위","atk":18},{"name":"꼬리내리치기","rps":"바위","atk":22},{"name":"물기둥","rps":"보","atk":20}],"dex":"하얀 새끼 고래로, 물기둥을 뿜어 인사하는 습관이 있다. 아직 어려 물기둥이 삐뚤빼뚤하지만, 그 서툰 분수가 오히려 뱃사람들의 사랑을 받는다. 흰 고래를 본 배는 그날 만선이 된다는 오랜 믿음이 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"039","name":"백경신수","type":"물","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"신수의이빨","rps":"가위","atk":24},{"name":"대왕꼬리강타","rps":"바위","atk":26},{"name":"백파만경","rps":"보","atk":22}],"dex":"등 위에 작은 섬이 자라날 만큼 오래 산 흰 고래. 섬에는 나무가 자라고 새가 깃들어, 이 녀석이 헤엄치면 섬 하나가 바다를 여행하는 셈이다. 뱃사람들은 폭풍 속에서 이 고래를 만나면 그 곁이 가장 안전한 항구라 여겼다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"040","name":"우물지기","type":"물","grade":"B","hp":50,"isFinal":false,"evolveTo":null,"skills":[{"name":"두레박낫","rps":"가위","atk":15},{"name":"우물뚜껑찍기","rps":"바위","atk":13},{"name":"샘솟기","rps":"보","atk":18}],"dex":"오래된 우물마다 하나씩 산다는 물의 정령. 마을 사람들이 두레박으로 물을 길으면 몰래 깨끗한 샘물을 채워준다. 우물이 메마르면 슬퍼하며 떠나는데, 그래서 옛사람들은 우물을 정성껏 돌봤다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"041","name":"장마정령","type":"물","grade":"A","hp":75,"isFinal":false,"evolveTo":null,"skills":[{"name":"빗발베기","rps":"가위","atk":18},{"name":"먹구름압박","rps":"바위","atk":20},{"name":"장마전선","rps":"보","atk":22}],"dex":"이 녀석이 머무는 동네엔 장마가 유난히 길다. 심술이 아니라 사실은 헤어지기 아쉬워 자꾸 비를 내리는 것이다. 농부들은 투덜대면서도, 이 정령이 지나간 해엔 흉년이 없다는 걸 알기에 미워하지 못한다.","category":"일반","wildSpawn":true,"safariOnly":true,"evolveWins":null},{"id":"042","name":"해일신수","type":"물","grade":"S","hp":105,"isFinal":false,"evolveTo":null,"skills":[{"name":"파도칼날","rps":"가위","atk":22},{"name":"해일망치","rps":"바위","atk":26},{"name":"천해붕괴","rps":"보","atk":24}],"dex":"성난 바다 그 자체가 형상을 얻은 존재. 화가 나면 해일을 일으키지만, 그 분노의 대상은 언제나 바다를 더럽힌 자들이다. 바다를 아끼는 어부의 배는 아무리 큰 파도 속에서도 이 신수가 살며시 뭍으로 밀어 올려준다고 한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"043","name":"리프베어","type":"풀","grade":"C","hp":30,"isFinal":false,"evolveTo":"044","skills":[{"name":"새싹발톱","rps":"가위","atk":11},{"name":"아기곰박치기","rps":"바위","atk":13},{"name":"꽃가루","rps":"보","atk":9}],"dex":"등에 작은 새싹이 돋아난 아기 곰. 이 새싹으로 그날의 날씨를 점치는데, 잎이 축 처지면 비가 온다. 새싹이 시들까 봐 볕 좋은 자리를 찾아다니는 모습이, 마치 화분을 안고 다니는 것 같다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"044","name":"덩굴곰","type":"풀","grade":"B","hp":50,"isFinal":false,"evolveTo":"045","skills":[{"name":"덩굴낫발톱","rps":"가위","atk":15},{"name":"덩굴옥죄기","rps":"바위","atk":18},{"name":"포자구름","rps":"보","atk":13}],"dex":"팔에 감긴 덩굴을 채찍처럼, 밧줄처럼 자유자재로 쓰는 곰. 높은 나무의 열매도 덩굴을 뻗어 척척 따낸다. 등의 새싹이 어느새 작은 나무가 되어, 지친 여행자가 그 그늘에 기대 쉬어가기도 한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"045","name":"수해대웅","type":"풀","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"만목참","rps":"가위","atk":20},{"name":"거목내리찍기","rps":"바위","atk":24},{"name":"수해의숨결","rps":"보","atk":15}],"dex":"등에 진 숲이 곧 자신의 왕국인 거대한 곰. 이 녀석이 지나간 자리엔 마른 땅에도 풀이 돋는다. 작은 새싹 하나를 소중히 지키던 아기 곰이, 이제 숲 전체를 등에 지고 걷는다. 성장이란 지켜야 할 것이 늘어나는 일임을 이 환수는 말없이 보여준다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"046","name":"정글몽키","type":"풀","grade":"C","hp":30,"isFinal":false,"evolveTo":"047","skills":[{"name":"잎사귀표창","rps":"가위","atk":13},{"name":"나무타기킥","rps":"바위","atk":11},{"name":"바나나잎부채","rps":"보","atk":9}],"dex":"나뭇가지 사이를 오가는 속도만큼은 누구도 못 따라가는 원숭이. 잎사귀를 표창처럼 던지는 장난을 좋아하지만, 정작 화가 나면 눈물부터 그렁그렁해진다. 좋아하는 열매를 친구에게 먼저 건네는 다정한 구석이 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"047","name":"수풀원숭이","type":"풀","grade":"B","hp":50,"isFinal":false,"evolveTo":"048","skills":[{"name":"가지쌍검","rps":"가위","atk":18},{"name":"옹이주먹","rps":"바위","atk":15},{"name":"숲그늘장막","rps":"보","atk":13}],"dex":"나뭇가지 두 개만 있으면 훌륭한 검객이 되는 원숭이. 대숲을 지나는 바람 소리를 들으며 홀로 검술을 수련한다. 잎사귀를 던지며 장난치던 어린 날이 어느새 진지한 무예가 되었지만, 여전히 친구에게 열매를 양보하는 마음은 그대로다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"048","name":"신목대성","type":"풀","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"신목일도","rps":"가위","atk":24},{"name":"천년여의봉","rps":"바위","atk":29},{"name":"개화만발","rps":"보","atk":20}],"dex":"천 년 묵은 신목의 힘을 얻은 원숭이 대성. 여의봉을 한 번 휘두르면 메마른 산에 꽃이 만발한다. 나뭇가지 검으로 시작한 수련이 세상을 지키는 힘이 되었으나, 그는 여전히 자신을 숲의 개구쟁이라 여긴다. 힘을 얻을수록 겸손해지는 것 — 그것이 진짜 대성(大聖)의 조건이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"049","name":"클로버버니","type":"풀","grade":"C","hp":30,"isFinal":false,"evolveTo":"050","skills":[{"name":"잎날차기","rps":"가위","atk":11},{"name":"깡총밟기","rps":"바위","atk":11},{"name":"클로버바람","rps":"보","atk":11}],"dex":"뛰어다니는 발밑마다 클로버가 돋아나는 토끼. 귀가 세잎클로버 모양이라, 아주 드물게 네잎클로버 귀를 가진 아이가 태어나면 무리의 행운아로 여겨진다. 행운을 나눠주는 게 좋아 사람들 발치를 깡총깡총 따라다닌다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"050","name":"네잎깡총","type":"풀","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"행운의발차기","rps":"가위","atk":15},{"name":"네잎강타","rps":"바위","atk":18},{"name":"행운가루","rps":"보","atk":13}],"dex":"만나기만 해도 운이 좋아진다는 소문의 네잎클로버 토끼. 실제로 이 녀석이 다녀간 밭은 그해 유난히 잘 자란다. 행운은 나눌수록 커진다는 걸 아는지, 자기보다 힘든 이들을 골라 곁에 머문다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"051","name":"모스토드","type":"풀","grade":"C","hp":30,"isFinal":false,"evolveTo":"052","skills":[{"name":"혀채찍","rps":"가위","atk":9},{"name":"이끼몸통박치기","rps":"바위","atk":13},{"name":"포자트림","rps":"보","atk":11}],"dex":"등의 이끼는 이 녀석이 오래 앉아 있던 자리에서 옮겨온 것. 워낙 느긋해서 등에 이끼가 낄 정도지만, 혀를 뻗어 벌레를 잡는 순간만큼은 번개처럼 빠르다. 비 오는 날이면 등의 이끼가 촉촉해져 기분이 좋아진다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"052","name":"늪두꺼비왕","type":"풀","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"늪혀절단","rps":"가위","atk":13},{"name":"진흙누르기","rps":"바위","atk":18},{"name":"독이끼안개","rps":"보","atk":15}],"dex":"늪인 줄 알고 발을 디뎠다면 이미 늦었다 — 이 녀석의 등이었을 테니. 늪 전체를 다스리는 왕이지만, 늪에 빠진 작은 동물은 슬쩍 혀로 건져 뭍에 올려준다. 무섭게 생긴 겉모습과 달리, 늪의 생명들을 지키는 다정한 파수꾼이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"053","name":"코튼덕","type":"풀","grade":"C","hp":30,"isFinal":false,"evolveTo":"054","skills":[{"name":"깃털침","rps":"가위","atk":9},{"name":"솜털박치기","rps":"바위","atk":11},{"name":"홀씨꽥꽥","rps":"보","atk":13}],"dex":"깃털이 전부 민들레 솜털로 된 오리. 꽥 하고 울 때마다 솜털 홀씨가 흩날려, 지나간 자리엔 봄이면 민들레가 핀다. 바람 부는 날엔 깃털이 자꾸 날아가 조금 허전해지지만, 곧 새 솜털이 보송보송 돋아난다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"054","name":"민들레오리","type":"풀","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"씨앗부리","rps":"가위","atk":13},{"name":"꽥꽥돌진","rps":"바위","atk":15},{"name":"홀씨폭풍","rps":"보","atk":18}],"dex":"날아오르면 온 들판이 하얀 홀씨로 뒤덮이는 오리. 그 광경이 마치 눈이 내리는 것 같아, 사람들은 이 녀석의 비행을 '여름 눈'이라 부른다. 홀씨 하나하나가 새로운 생명이 되니, 이 오리가 지나간 들판은 이듬해 더욱 풍성해진다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"055","name":"가시장미뱀","type":"풀","grade":"B","hp":50,"isFinal":false,"evolveTo":"056","skills":[{"name":"가시엄니","rps":"가위","atk":15},{"name":"휘감기","rps":"바위","atk":18},{"name":"꽃잎회오리","rps":"보","atk":13}],"dex":"아름다운 장미 덩굴을 두른 뱀. 함부로 다가가면 가시에 찔리지만, 진심으로 다가오는 이에게는 가장 향기로운 꽃을 내어준다. 아름다움에는 지켜야 할 것을 지키는 가시가 필요하다는 걸, 이 환수는 온몸으로 보여준다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"056","name":"만경가시룡","type":"풀","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"만경가시참","rps":"가위","atk":22},{"name":"조이기분쇄","rps":"바위","atk":18},{"name":"장미광풍","rps":"보","atk":20}],"dex":"만 갈래의 가시덩굴이 하나의 용을 이룬 존재. 장미 향으로 상대를 홀리고 가시로 제압하지만, 정작 자기 몸의 가시에 스스로 찔릴까 봐 조심조심 움직인다. 강함과 여림을 동시에 지닌, 모순 속에 피어난 꽃 같은 환수.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"057","name":"버섯도깨비","type":"풀","grade":"B","hp":50,"isFinal":false,"evolveTo":"058","skills":[{"name":"갓날리기","rps":"가위","atk":13},{"name":"버섯방망이","rps":"바위","atk":15},{"name":"독포자","rps":"보","atk":18}],"dex":"비 온 뒤 숲에서 씨름을 걸어오는 버섯 도깨비. 지면 순순히 포자 가루를 뿌려주는데, 그 자리엔 이듬해 버섯이 잔뜩 돋는다. 심심한 게 세상에서 제일 싫어서, 지나가는 나그네를 붙잡고 수수께끼를 내곤 한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"058","name":"독버섯대왕","type":"풀","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"맹독낫","rps":"가위","atk":20},{"name":"거대갓내리찍기","rps":"바위","atk":22},{"name":"환각포자운","rps":"보","atk":18}],"dex":"화려한 갓일수록 위험하다는 자연의 경고를 그대로 형상화한 대왕. 환각 포자로 숲에 발을 들인 침입자를 길 잃게 만들지만, 숲을 아끼는 이에게는 약이 되는 버섯을 내어준다. 독과 약은 종이 한 장 차이임을 아는, 숲의 오랜 약재상이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"059","name":"죽림객","type":"풀","grade":"A","hp":75,"isFinal":false,"evolveTo":"060","skills":[{"name":"대나무검","rps":"가위","atk":22},{"name":"마디후려치기","rps":"바위","atk":18},{"name":"죽엽만천","rps":"보","atk":20}],"dex":"대숲을 지나는 바람 소리가 곧 이 녀석의 검술 수련 소리다. 홀로 수행하는 은둔 무사로, 함부로 검을 뽑지 않지만 한번 뽑으면 댓잎이 하늘을 뒤덮는다. 곧게 자라는 대나무처럼, 휘어질지언정 부러지지 않는 마음을 지녔다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"060","name":"청죽선인","type":"풀","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"청죽일섬","rps":"가위","atk":29},{"name":"천근죽장","rps":"바위","atk":22},{"name":"죽림만리","rps":"보","atk":22}],"dex":"대숲의 은둔 고수가 신선의 경지에 이른 모습. 검 한 번에 만 리 밖 대숲이 함께 운다고 전해진다. 평생 곧게만 살아온 그가 유일하게 굽히는 순간은, 길 잃은 아이에게 길을 알려줄 때 허리를 숙일 때뿐이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"061","name":"허수아비령","type":"풀","grade":"B","hp":50,"isFinal":false,"evolveTo":null,"skills":[{"name":"짚단베기","rps":"가위","atk":13},{"name":"장대후리기","rps":"바위","atk":15},{"name":"까마귀부르기","rps":"보","atk":18}],"dex":"밤이 되면 밭을 순찰하는 허수아비 정령. 낮에는 꼼짝 않고 서 있다가, 달이 뜨면 성큼성큼 걸으며 곡식을 지킨다. 정작 자신이 부려야 할 까마귀들과 친구가 되어버려, 함께 밭을 지키는 이상한 동맹을 맺었다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"062","name":"산삼동자","type":"풀","grade":"A","hp":75,"isFinal":false,"evolveTo":null,"skills":[{"name":"뿌리채찍","rps":"가위","atk":20},{"name":"영근박치기","rps":"바위","atk":18},{"name":"천년정기","rps":"보","atk":22}],"dex":"캐려는 자의 눈에는 절대 보이지 않는다는 산삼 동자. 진심으로 산을 아끼는 심마니 앞에만 슬며시 모습을 드러낸다. 천 년의 정기를 품었지만 여전히 동자의 마음이라, 숨바꼭질과 산속 다람쥐를 좋아한다.","category":"일반","wildSpawn":true,"safariOnly":true,"evolveWins":null},{"id":"063","name":"화왕","type":"풀","grade":"S","hp":105,"isFinal":false,"evolveTo":null,"skills":[{"name":"화왕검무","rps":"가위","atk":24},{"name":"꽃대철퇴","rps":"바위","atk":24},{"name":"만화방창","rps":"보","atk":24}],"dex":"세상 모든 꽃이 그의 신하라는 꽃의 제왕. 그가 걸음을 옮기면 계절을 가리지 않고 꽃이 피어난다. 화려함의 절정에 있으나, 가장 아끼는 것은 아무도 봐주지 않는 길가의 이름 없는 들꽃이다. 진정한 왕은 가장 낮은 곳의 백성을 먼저 살핀다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"064","name":"네일노움","type":"철","grade":"C","hp":30,"isFinal":false,"evolveTo":"065","skills":[{"name":"못긁기","rps":"가위","atk":11},{"name":"망치질","rps":"바위","atk":15},{"name":"쇳가루","rps":"보","atk":7}],"dex":"머리의 못이 자랄수록 강해진다고 믿는 대장장이 노움. 사실 못은 그저 자라는 것뿐이지만, 그렇게 믿으니 정말로 매일 조금씩 단단해진다. 믿음이 힘이 되는 신기한 환수. 밤이면 어디선가 작은 망치 소리를 낸다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"065","name":"톱니난쟁이","type":"철","grade":"B","hp":50,"isFinal":false,"evolveTo":"066","skills":[{"name":"톱니절단","rps":"가위","atk":18},{"name":"모루내리찍기","rps":"바위","atk":15},{"name":"나사폭우","rps":"보","atk":13}],"dex":"밤새 어딘가에서 망치 소리를 내는 부지런한 대장장이. 톱니바퀴를 자유자재로 다뤄, 고장 난 물건이 이 녀석 손을 거치면 새것보다 잘 돌아간다. 머리의 못을 믿던 어린 날처럼, 여전히 '정성을 들이면 안 되는 게 없다'고 믿는다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"066","name":"강철대장장이","type":"철","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"명장의절삭","rps":"가위","atk":20},{"name":"천근해머","rps":"바위","atk":24},{"name":"용광로개방","rps":"보","atk":15}],"dex":"그가 벼린 무기엔 혼이 깃든다는 전설의 명장. 가슴의 용광로는 천 년째 꺼지지 않았다. 화려한 명검보다 농부의 무뎌진 호미를 정성껏 벼리는 걸 더 자랑스러워한다. 명장의 격은 무엇을 만드느냐가 아니라 어떤 마음으로 만드느냐에 있음을 안다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"067","name":"니들버디","type":"철","grade":"C","hp":30,"isFinal":false,"evolveTo":"068","skills":[{"name":"은침쪼기","rps":"가위","atk":13},{"name":"부리찍기","rps":"바위","atk":11},{"name":"깃털침비","rps":"보","atk":9}],"dex":"깃털 하나하나가 바늘처럼 가느다란 은빛 새. 스치기만 해도 따끔해서 다른 새들이 곁을 잘 안 주지만, 사실은 함께 놀고 싶어 안달이다. 좋아하는 상대에게는 가장 곧은 깃털 하나를 뽑아 선물한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"068","name":"강철매","type":"철","grade":"B","hp":50,"isFinal":false,"evolveTo":"069","skills":[{"name":"강철발톱","rps":"가위","atk":18},{"name":"급강하폭격","rps":"바위","atk":18},{"name":"철깃폭풍","rps":"보","atk":11}],"dex":"날개가 햇빛에 은빛으로 번쩍이는 강철 매. 급강하 속도가 어찌나 빠른지 뒤늦게 바람 가르는 소리가 따라온다. 외로웠던 어린 날을 기억해, 무리에서 뒤처진 약한 새를 제 날개 그늘로 감싸 함께 난다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"069","name":"천강신조","type":"철","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"신조의발톱","rps":"가위","atk":26},{"name":"유성낙하","rps":"바위","atk":26},{"name":"천강익격","rps":"보","atk":20}],"dex":"하늘에서 떨어진 별의 강철로 태어났다는 신조. 날개를 펼치면 그 자체가 밤하늘이 되어 별빛이 깃털 사이로 반짝인다. 우주를 날던 고독을 알기에, 홀로 남겨진 이의 곁을 가장 먼저 찾아가 함께 날아준다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"070","name":"스크류웜","type":"철","grade":"C","hp":30,"isFinal":false,"evolveTo":"071","skills":[{"name":"나사돌리기","rps":"가위","atk":11},{"name":"머리못박기","rps":"바위","atk":13},{"name":"기름칠","rps":"보","atk":9}],"dex":"몸을 빙글빙글 돌려 나무에 파고드는 나사 애벌레. 너무 신나게 돌다 보면 어디로 파고들었는지 잊어버려, 엉뚱한 곳에서 고개를 내밀곤 한다. 파고든 구멍은 신기하게도 나무에게 해가 되지 않는다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"071","name":"기어지네","type":"철","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"백각절단","rps":"가위","atk":18},{"name":"톱니바퀴돌진","rps":"바위","atk":13},{"name":"체인소용돌이","rps":"보","atk":15}],"dex":"백 개의 다리가 모두 맞물리는 톱니바퀴인 지네. 걸을 때마다 정교한 시계 소리가 난다. 다리 하나만 어긋나도 전체가 멈추기에, 누구보다 협력의 중요함을 잘 안다. 무리가 함께 움직이면 거대한 하나의 기계처럼 완벽하게 맞아떨어진다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"072","name":"실드비틀","type":"철","grade":"C","hp":30,"isFinal":false,"evolveTo":"073","skills":[{"name":"뿔치기","rps":"가위","atk":9},{"name":"방패돌진","rps":"바위","atk":15},{"name":"광택번쩍","rps":"보","atk":9}],"dex":"등딱지 광내는 게 하루 일과인 방패 딱정벌레. 어찌나 반질반질한지 제 얼굴이 비칠 정도다. 겁이 많아 위험하면 등딱지 속에 쏙 숨지만, 친구가 위험하면 제일 먼저 앞에 나서 방패가 되어준다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"073","name":"철갑딱정왕","type":"철","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"왕뿔절단","rps":"가위","atk":13},{"name":"철갑프레스","rps":"바위","atk":20},{"name":"갑주공명","rps":"보","atk":13}],"dex":"등딱지에 흠집 하나 없는 것이 자랑인 철갑의 왕. 그 단단한 갑옷은 어떤 공격도 튕겨낸다. 하지만 갑옷이 두꺼운 만큼 속은 여려서, 칭찬 한마디에 뿔이 발그레 달아오른다. 강해 보이는 자일수록 다정한 말 한마디가 필요한 법이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"074","name":"핀헤지","type":"철","grade":"C","hp":30,"isFinal":false,"evolveTo":"075","skills":[{"name":"바늘콕","rps":"가위","atk":15},{"name":"웅크려박치기","rps":"바위","atk":9},{"name":"가시털기","rps":"보","atk":9}],"dex":"놀라면 바늘을 사방에 떨어뜨리는 고슴도치. 그 바늘은 주워서 바느질에 쓸 수 있어, 옛 할머니들이 반겨했다. 정작 본인은 제 바늘에 찔릴까 봐 안기는 걸 무서워해, 좋아하는 사람 곁에서도 조심스레 거리를 둔다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"075","name":"침산고슴도치","type":"철","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"천침난자","rps":"가위","atk":20},{"name":"침산구르기","rps":"바위","atk":13},{"name":"바늘분사","rps":"보","atk":13}],"dex":"등의 바늘이 천 개가 넘는다는 고슴도치. 몸을 말아 구르면 굴러가는 바늘 산이 된다. 여전히 안기는 건 무섭지만, 마침내 방법을 찾았다 — 바늘을 모두 눕히고 배를 보이는 것. 신뢰란 가장 약한 곳을 내보이는 용기임을 배웠다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"076","name":"사슬늑대","type":"철","grade":"B","hp":50,"isFinal":false,"evolveTo":"077","skills":[{"name":"사슬엄니","rps":"가위","atk":18},{"name":"속박돌진","rps":"바위","atk":15},{"name":"사슬휘두르기","rps":"보","atk":13}],"dex":"끊어진 사슬을 훈장처럼 목에 두르고 다니는 늑대. 한때 갇혀 있었으나 스스로 사슬을 끊고 나왔다. 자유를 얻은 뒤에도 사슬을 버리지 않는 건, 갇혀 있던 시절을 잊지 않기 위해서다. 아픔을 기억하는 자만이 남의 아픔도 헤아린다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"077","name":"강철랑","type":"철","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"은빛엄니","rps":"가위","atk":22},{"name":"강철턱분쇄","rps":"바위","atk":20},{"name":"사슬폭풍","rps":"보","atk":18}],"dex":"그 턱은 바위도 씹어 부순다는 강철 늑대. 끊어진 사슬을 휘둘러 폭풍을 일으킨다. 무리의 왕이 되었지만 결코 약한 자를 사슬로 묶지 않는다. 갇혀본 자는 결코 남을 가두지 않는다는 것 — 그것이 이 늑대가 지키는 단 하나의 법이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"078","name":"청동거북","type":"철","grade":"B","hp":50,"isFinal":false,"evolveTo":"079","skills":[{"name":"등껍질날","rps":"가위","atk":13},{"name":"청동박치기","rps":"바위","atk":18},{"name":"녹청안개","rps":"보","atk":15}],"dex":"등껍질의 녹청이 나이테 역할을 하는 청동 거북. 오래 산 개체일수록 등이 푸르게 물든다. 서두르는 법이 없어, 급한 이들이 답답해하지만 이 녀석이 내린 결정은 한 번도 틀린 적이 없다. 느림은 게으름이 아니라 신중함이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"079","name":"범종거북","type":"철","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"종날베기","rps":"가위","atk":18},{"name":"범종내리찍기","rps":"바위","atk":22},{"name":"천년종성","rps":"보","atk":20}],"dex":"등을 두드리면 산사의 종소리가 울려 퍼지는 범종 거북. 그 소리를 들은 이는 마음속 번뇌가 씻긴다고 한다. 백 년에 한 번, 세상이 시끄러울 때 스스로 등을 울려 사람들의 마음을 가라앉힌다. 때로는 침묵보다 하나의 울림이 세상을 바꾼다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"080","name":"명검령","type":"철","grade":"A","hp":75,"isFinal":false,"evolveTo":"081","skills":[{"name":"발도술","rps":"가위","atk":24},{"name":"칼등치기","rps":"바위","atk":18},{"name":"검기방출","rps":"보","atk":18}],"dex":"주인을 기다리다 스스로 혼을 얻은 명검. 수백 년간 자신을 휘두를 자격이 있는 이를 기다려왔다. 힘만 센 자는 거부하고, 검을 쓰지 않아도 되는 세상을 꿈꾸는 자에게만 손잡이를 허락한다. 진정한 무기는 쓰이지 않기를 바란다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"081","name":"참마대검령","type":"철","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"참마일섬","rps":"가위","atk":29},{"name":"대검압쇄","rps":"바위","atk":24},{"name":"만검귀종","rps":"보","atk":20}],"dex":"칼집에서 뽑히는 날 산이 갈라진다는 전설의 대검. 수백 자루의 명검이 하나로 모여 이룬 검의 신이다. 그 압도적 힘에도 좀처럼 뽑히지 않는 건, 이 검이 지키려는 것이 '베는 것'이 아니라 '베지 않아도 되는 평화'이기 때문이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"082","name":"고철잡귀","type":"철","grade":"B","hp":50,"isFinal":false,"evolveTo":null,"skills":[{"name":"고철할퀴기","rps":"가위","atk":13},{"name":"폐차프레스","rps":"바위","atk":18},{"name":"부품흩뿌리기","rps":"보","atk":15}],"dex":"버려진 쇳조각들이 미련을 품고 뭉쳐 태어난 잡귀. 아무렇게나 붙은 몸이 부끄러워 어두운 고물상 구석에 숨어 산다. 하지만 그 몸의 부품 하나하나엔 누군가 소중히 쓰던 기억이 담겨 있어, 버려진 것에도 이야기가 있음을 말해준다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"083","name":"자석괴","type":"철","grade":"A","hp":75,"isFinal":false,"evolveTo":null,"skills":[{"name":"자기날","rps":"가위","atk":18},{"name":"인력강타","rps":"바위","atk":20},{"name":"자기폭풍","rps":"보","atk":22}],"dex":"가까이 가면 시계가 멈추고 나침반이 빙빙 도는 자석 괴물. 주변 금속을 죄다 끌어당겨 온몸이 잡동사니로 뒤덮여 있다. 외로움을 많이 타서 자꾸 뭔가를 끌어당기는 것인데, 정작 마음까지 끌어당기는 법은 몰라 늘 혼자다.","category":"일반","wildSpawn":true,"safariOnly":true,"evolveWins":null},{"id":"084","name":"강철거신","type":"철","grade":"S","hp":105,"isFinal":false,"evolveTo":null,"skills":[{"name":"거신의손날","rps":"가위","atk":20},{"name":"천톤주먹","rps":"바위","atk":29},{"name":"철벽진동","rps":"보","atk":20}],"dex":"고대 문명이 남긴 수호 병기. 도시 하나를 지키기 위해 만들어졌으나, 정작 지켜야 할 도시는 오래전 사라졌다. 그럼에도 텅 빈 폐허를 여태 지키고 서 있다. 지킬 것이 사라져도 지키는 마음은 남는다 — 그 우직함이 이 거신의 존재 이유다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"085","name":"페블딜로","type":"돌","grade":"C","hp":30,"isFinal":false,"evolveTo":"086","skills":[{"name":"모서리긁기","rps":"가위","atk":9},{"name":"몸말아구르기","rps":"바위","atk":15},{"name":"모래끼얹기","rps":"보","atk":9}],"dex":"놀라면 조약돌처럼 동그랗게 몸을 마는 아르마딜로. 강가 조약돌 틈에 섞여 있으면 아무도 못 알아본다. 그 재주로 숨바꼭질에선 늘 이기지만, 정작 너무 잘 숨어서 친구들이 못 찾고 가버릴 때가 있어 조금 서운하다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"086","name":"바위갑돌","type":"돌","grade":"B","hp":50,"isFinal":false,"evolveTo":"087","skills":[{"name":"암석비늘날","rps":"가위","atk":13},{"name":"바위구르기","rps":"바위","atk":20},{"name":"낙석","rps":"보","atk":13}],"dex":"낮잠 자는 모습이 영락없는 바위라, 사람들이 그 위에 앉아 쉬어가곤 한다. 깨어나도 화내지 않고 사람이 다 쉴 때까지 가만히 기다려주는 너그러움이 있다. 단단한 겉모습 아래 누구보다 따뜻한 마음이 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"087","name":"산악거갑수","type":"돌","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"능선가르기","rps":"가위","atk":18},{"name":"산사태돌진","rps":"바위","atk":24},{"name":"지각융기","rps":"보","atk":18}],"dex":"등딱지 능선에 나무가 자랄 만큼 거대한 짐승. 이 녀석이 앉은 자리가 언덕이 되고, 걸으면 작은 지진이 인다. 자기 등에 깃든 나무와 새들을 위해 발걸음 하나하나를 조심스레 내딛는다. 큰 존재일수록 작은 생명을 배려해야 한다는 걸 안다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"088","name":"샌드몰","type":"돌","grade":"C","hp":30,"isFinal":false,"evolveTo":"089","skills":[{"name":"앞발긁기","rps":"가위","atk":11},{"name":"땅파기돌진","rps":"바위","atk":13},{"name":"모래뿌리기","rps":"보","atk":9}],"dex":"땅속 이동이 걷기보다 빠른 모래 두더지. 눈이 나빠 앞이 잘 안 보이지만, 발끝의 감각으로 땅속 세상을 훤히 안다. 가끔 방향을 착각해 엉뚱한 곳에서 고개를 내밀곤 하는데, 그때마다 세상 놀란 표정이 귀엽다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"089","name":"사암두더지왕","type":"돌","grade":"B","hp":50,"isFinal":false,"evolveTo":"090","skills":[{"name":"사암발톱","rps":"가위","atk":18},{"name":"지하돌파","rps":"바위","atk":20},{"name":"모래폭풍","rps":"보","atk":15}],"dex":"지하 왕국의 미로 같은 터널은 모두 이 녀석의 작품이다. 수백 년에 걸쳐 판 터널은 도시 하나를 담을 만큼 넓다. 길 잃은 지하 생물들에게 기꺼이 길을 안내해주어, 땅속 세계의 존경받는 안내자로 통한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"090","name":"대지신군","type":"돌","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"지신의손톱","rps":"가위","atk":20},{"name":"대지진각","rps":"바위","atk":29},{"name":"천지개벽","rps":"보","atk":20}],"dex":"잠들면 산맥이 되고 깨어나면 지진이 온다는 대지의 신. 그 거대함에 사람들은 두려워하지만, 사실 이 신이 잠든 덕에 땅이 안정을 유지한다. 함부로 깨우지만 않으면, 대지신군은 세상에서 가장 든든한 땅의 기둥이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"091","name":"록크랩","type":"돌","grade":"C","hp":30,"isFinal":false,"evolveTo":"092","skills":[{"name":"집게자르기","rps":"가위","atk":15},{"name":"자갈던지기","rps":"바위","atk":11},{"name":"거품모래","rps":"보","atk":9}],"dex":"등에 진 자갈이 자기 집인 소라게. 몸이 자라면 더 큰 돌을 찾아 이사하는데, 마음에 드는 돌을 고르는 데 온종일 걸린다. 완벽한 집을 찾는 그 까다로움이, 실은 자기 삶을 소중히 여기는 마음이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"092","name":"암석게","type":"돌","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"바위집게절단","rps":"가위","atk":20},{"name":"암석프레스","rps":"바위","atk":15},{"name":"모래간헐천","rps":"보","atk":13}],"dex":"집게 힘만큼은 S급이라는 소문이 도는 바위 게. 그 집게로 바위를 부수지만, 정작 조개껍데기 하나는 조심스레 열어 속살만 쏙 빼먹는 섬세함도 있다. 힘과 섬세함은 함께 있을 때 비로소 완성된다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"093","name":"스탈리","type":"돌","grade":"C","hp":30,"isFinal":false,"evolveTo":"094","skills":[{"name":"석순콕","rps":"가위","atk":9},{"name":"천장낙하","rps":"바위","atk":11},{"name":"석회안개","rps":"보","atk":13}],"dex":"동굴 천장에서 십 년에 1cm씩 자라는 느긋한 석순. 세상에서 가장 느리게 자라지만, 조급해하는 법이 없다. 천장에서 떨어지는 물방울 소리를 자장가 삼아, 백 년이고 천 년이고 제 속도로 자란다. 느려도 멈추지만 않으면 언젠가 기둥이 된다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"094","name":"종유석령","type":"돌","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"종유창","rps":"가위","atk":15},{"name":"동굴붕락","rps":"바위","atk":13},{"name":"석주진동","rps":"보","atk":18}],"dex":"동굴의 침묵을 지키는 종유석 파수꾼. 수만 년의 시간이 한 방울씩 쌓여 이룬 몸이라, 그 앞에 서면 시간의 무게가 느껴진다. 함부로 떠드는 침입자에겐 천장을 흔들어 경고하지만, 조용히 자연을 경외하는 이는 말없이 통과시킨다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"095","name":"포슬리","type":"돌","grade":"C","hp":30,"isFinal":false,"evolveTo":"096","skills":[{"name":"뼈긁기","rps":"가위","atk":11},{"name":"화석박치기","rps":"바위","atk":13},{"name":"태고의먼지","rps":"보","atk":9}],"dex":"발굴 현장에서 갓 눈을 뜬 아기 화석. 억겁의 잠에서 깨어나 모든 게 신기한지, 눈이 늘 동그랗다. 자기가 살던 시대는 사라졌지만 슬퍼하지 않는다 — 새로운 시대에도 친구가 있으니까. 과거는 사라져도 만남은 새로 시작된다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"096","name":"각룡화석","type":"돌","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"뿔날베기","rps":"가위","atk":13},{"name":"화석돌진","rps":"바위","atk":20},{"name":"백악기포효","rps":"보","atk":13}],"dex":"뿔의 위엄은 일억 년 전 그대로인 각룡 화석. 멸종이라는 운명을 이겨내고 다시 걷는 이 녀석은, 끝이란 없으며 모든 것은 형태를 바꿔 이어진다는 걸 증명한다. 화석이 된 뿔로 여전히 제 무리를 지키려 한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"097","name":"수정도마뱀","type":"돌","grade":"B","hp":50,"isFinal":false,"evolveTo":"098","skills":[{"name":"수정발톱","rps":"가위","atk":18},{"name":"결정박치기","rps":"바위","atk":13},{"name":"수정가루","rps":"보","atk":15}],"dex":"비늘이 수정이라 빛을 받으면 눈부시게 반짝이는 도마뱀. 햇살 좋은 바위에 올라 제 몸을 무지갯빛으로 빛내는 걸 즐긴다. 그 아름다움을 노리는 이들이 많아 늘 경계하지만, 순수하게 아름다움에 감탄하는 아이들 앞에선 기꺼이 빛나준다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"098","name":"자수정룡","type":"돌","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"자수정검","rps":"가위","atk":22},{"name":"결정낙하","rps":"바위","atk":18},{"name":"굴절광선","rps":"보","atk":20}],"dex":"보랏빛 몸이 빛을 무기로 바꾸는 자수정 용. 햇빛을 모아 굴절시키면 무지개 광선이 뻗어나간다. 아름다움과 강함을 동시에 지녔지만, 자신의 진짜 힘은 어둠 속에서 길 잃은 이에게 빛을 비춰주는 것이라 믿는다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"099","name":"돌하르방동자","type":"돌","grade":"B","hp":50,"isFinal":false,"evolveTo":"100","skills":[{"name":"현무암손날","rps":"가위","atk":13},{"name":"하르방박치기","rps":"바위","atk":18},{"name":"화산송이","rps":"보","atk":15}],"dex":"코를 만지면 행운이 온다는 아기 돌하르방. 사람들이 하도 코를 만져서 코끝만 반질반질하다. 마을 어귀에 서서 오가는 이들에게 인사하는 게 유일한 일과인데, 정작 자기가 인사받는 걸 더 좋아한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"100","name":"돌하르방대왕","type":"돌","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"대왕손날","rps":"가위","atk":18},{"name":"하르방프레스","rps":"바위","atk":24},{"name":"수호결계","rps":"보","atk":18}],"dex":"마을 어귀에서 천 년을 서 있었다는 돌하르방 대왕. 그 긴 세월 동안 마을에 드는 나쁜 기운을 묵묵히 막아왔다. 눈, 비, 바람을 다 맞으면서도 자리를 뜨지 않은 건, 지켜야 할 마을 사람들이 있기 때문이다. 묵묵함이야말로 가장 오래가는 사랑이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"101","name":"운석충","type":"돌","grade":"A","hp":75,"isFinal":false,"evolveTo":"102","skills":[{"name":"운철턱","rps":"가위","atk":18},{"name":"대기권돌진","rps":"바위","atk":22},{"name":"유성우","rps":"보","atk":20}],"dex":"별똥별에 붙어 지구에 왔다는 운석 벌레. 우주에서 온 탓에 지구의 모든 게 신기하다. 밤이면 고향인 별을 그리워하며 하늘을 올려다보는데, 그 모습을 본 사람은 소원을 빌면 이루어진다고 한다. 그리움조차 누군가에겐 별빛이 된다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"102","name":"운석거수","type":"돌","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"운철칼날","rps":"가위","atk":24},{"name":"크레이터강타","rps":"바위","atk":26},{"name":"멸망의별","rps":"보","atk":22}],"dex":"별과 함께 떨어진 태고의 짐승. 한때 공룡의 시대를 끝냈다는 전설의 그 별이 이 녀석이라는 소문도 있다. 파괴의 상징으로 두려움을 사지만, 정작 본인은 자신이 떨어질 때 사라진 생명들을 오래도록 애도하고 있다. 가장 큰 힘은 때로 가장 큰 슬픔을 안고 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"103","name":"장승령","type":"돌","grade":"B","hp":50,"isFinal":false,"evolveTo":null,"skills":[{"name":"장승패기","rps":"가위","atk":13},{"name":"말뚝박기","rps":"바위","atk":15},{"name":"벽사의눈","rps":"보","atk":18}],"dex":"마을 밖 나쁜 기운을 막아서는 장승 정령. 부리부리한 눈으로 잡귀를 노려보지만, 사실 그 험상궂은 표정은 타고난 것일 뿐 성격은 더없이 순하다. 밤길 무서워하는 아이가 있으면 슬며시 곁을 따라 걸어준다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"104","name":"석상수호령","type":"돌","grade":"A","hp":75,"isFinal":false,"evolveTo":null,"skills":[{"name":"석검횡참","rps":"가위","atk":20},{"name":"석권","rps":"바위","atk":18},{"name":"풍화의숨결","rps":"보","atk":18}],"dex":"천 년 석상에 깃든 옛 무사의 혼. 오랜 세월 풍화되어 얼굴은 흐릿해졌지만 검을 쥔 자세만은 흐트러짐이 없다. 지키겠다는 맹세 하나로 천 년을 버텼다. 세월이 얼굴을 지워도 마음에 새긴 약속은 지워지지 않는다.","category":"일반","wildSpawn":true,"safariOnly":true,"evolveWins":null},{"id":"105","name":"태산군주","type":"돌","grade":"S","hp":105,"isFinal":false,"evolveTo":null,"skills":[{"name":"단층가르기","rps":"가위","atk":22},{"name":"태산압","rps":"바위","atk":29},{"name":"지맥해방","rps":"보","atk":22}],"dex":"산을 옮긴다는 전설의 주인공, 태산군주. 그 앞에 서면 인간이 얼마나 작은 존재인지 절로 깨닫게 된다. 하지만 이 군주는 결코 인간을 하찮게 여기지 않는다. 작은 씨앗이 바위를 가르고 나무가 되는 것을, 산은 오랜 세월 지켜봐 왔기 때문이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"106","name":"브리즈키드","type":"풍","grade":"C","hp":30,"isFinal":false,"evolveTo":"107","skills":[{"name":"바람손날","rps":"가위","atk":11},{"name":"돌개차기","rps":"바위","atk":11},{"name":"산들숨결","rps":"보","atk":11}],"dex":"솔숲 사이를 지나는 바람에서 태어난 아이. 가만히 있질 못하고 늘 어딘가로 달려간다. 더운 날 이 아이가 지나가면 시원한 산들바람이 불어, 사람들은 반가워하며 손을 흔든다. 붙잡으려 하면 웃으며 바람처럼 빠져나간다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"107","name":"돌풍소년","type":"풍","grade":"B","hp":50,"isFinal":false,"evolveTo":"108","skills":[{"name":"진공손날","rps":"가위","atk":15},{"name":"돌풍펀치","rps":"바위","atk":18},{"name":"회오리","rps":"보","atk":13}],"dex":"달리기 시합에서 져 본 적이 없는 돌풍 소년. 바람과 하나가 되어 달릴 때 가장 행복하다. 승부욕이 강하지만 진 상대를 놀리는 법은 없고, 오히려 손을 내밀어 함께 다시 달리자고 한다. 진짜 빠른 자는 남을 기다릴 줄도 안다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"108","name":"폭풍기사","type":"풍","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"질풍검","rps":"가위","atk":24},{"name":"난기류강타","rps":"바위","atk":18},{"name":"폭풍전야","rps":"보","atk":15}],"dex":"바람의 검을 다루는 하늘의 기사. 폭풍이 몰아치기 직전의 고요함처럼, 평소엔 더없이 차분하다. 약한 자를 괴롭히는 자 앞에서만 검을 뽑는데, 그 검이 일으키는 질풍은 정의롭지 못한 것을 모두 날려버린다. 진정한 힘은 지킬 때만 뽑는 검이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"109","name":"클라우파카","type":"풍","grade":"C","hp":30,"isFinal":false,"evolveTo":"110","skills":[{"name":"구름털할퀴기","rps":"가위","atk":9},{"name":"뭉게박치기","rps":"바위","atk":11},{"name":"솜털안개","rps":"보","atk":13}],"dex":"맑은 날 하늘 목장에서 풀을 뜯는다는 구름 알파카. 털이 진짜 구름이라 만지면 촉촉하고 폭신하다. 기분이 좋으면 털에서 작은 무지개가 피어오르고, 시무룩하면 이슬비를 흘린다. 감정이 날씨가 되는 정직한 환수.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"110","name":"구름알파카","type":"풍","grade":"B","hp":50,"isFinal":false,"evolveTo":"111","skills":[{"name":"운기베기","rps":"가위","atk":13},{"name":"적란운낙하","rps":"바위","atk":18},{"name":"구름바다","rps":"보","atk":15}],"dex":"기분이 나쁘면 소나기를 뱉는 구름 알파카. 몸집이 커진 만큼 감정도 커져서, 화가 나면 먹구름이 되어 천둥까지 친다. 하지만 화가 풀리면 언제 그랬냐는 듯 맑아져, 뱉어낸 비 끝엔 늘 무지개를 걸어둔다. 감정에 솔직한 건 부끄러운 게 아니다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"111","name":"태풍의눈","type":"풍","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"풍안일섬","rps":"가위","atk":26},{"name":"기압분쇄","rps":"바위","atk":22},{"name":"초대형태풍","rps":"보","atk":24}],"dex":"태풍 한가운데 고요히 떠 있는 눈동자. 주변엔 온 세상을 뒤흔드는 폭풍이 몰아치지만, 그 중심의 이 녀석만은 거짓말처럼 평온하다. 가장 큰 혼란의 한가운데서 흔들리지 않는 고요를 지키는 것 — 그것이 이 환수가 지닌 진짜 힘이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"112","name":"고스트카이트","type":"풍","grade":"C","hp":30,"isFinal":false,"evolveTo":"113","skills":[{"name":"연실끊기","rps":"가위","atk":11},{"name":"얼레치기","rps":"바위","atk":9},{"name":"꼬리연춤","rps":"보","atk":13}],"dex":"끊어져 하늘로 날아간 연들의 혼이 모여 태어났다. 아이의 손을 떠난 그 순간의 아쉬움을 기억해, 연 날리는 아이들 곁을 맴돈다. 바람이 약한 날엔 몰래 연을 밀어 올려주는데, 아이들은 그저 바람이 좋았다고 생각한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"113","name":"방패연대귀","type":"풍","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"연실베기","rps":"가위","atk":15},{"name":"방패연강타","rps":"바위","atk":13},{"name":"연싸움폭풍","rps":"보","atk":18}],"dex":"정월 하늘의 연싸움 챔피언. 연실을 서로 걸어 끊는 연싸움에서 한 번도 진 적이 없다. 하지만 상대의 연실을 끊고 나면, 떨어지는 연을 살며시 받아 주인에게 돌려준다. 이기되 상대를 잃지 않게 하는 것이 진짜 고수의 승부다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"114","name":"윈스패로","type":"풍","grade":"C","hp":30,"isFinal":false,"evolveTo":"115","skills":[{"name":"깃날","rps":"가위","atk":13},{"name":"부리쪼기돌진","rps":"바위","atk":11},{"name":"짹짹돌풍","rps":"보","atk":9}],"dex":"바람을 등지고 나는 법을 아는 영리한 참새. 작은 몸으로도 거센 바람을 타고 멀리까지 난다. 무리에서 가장 작지만 가장 용감해서, 위험이 다가오면 제일 먼저 날아올라 동료들에게 알린다. 크기는 용기와 상관없다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"115","name":"회오리참새","type":"풍","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"회오리깃","rps":"가위","atk":15},{"name":"선회폭격","rps":"바위","atk":13},{"name":"참새떼소환","rps":"보","atk":18}],"dex":"무리 지어 날면 작은 회오리가 이는 참새들의 우두머리. 수백 마리가 한 몸처럼 움직이는 군무는 하늘의 장관이다. 우두머리이면서도 늘 무리의 맨 뒤에서 난다 — 뒤처지는 동료가 없는지 살피기 위해서다. 앞장서는 것만이 리더는 아니다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"116","name":"휘슬배트","type":"풍","grade":"C","hp":30,"isFinal":false,"evolveTo":"117","skills":[{"name":"날개베기","rps":"가위","atk":11},{"name":"거꾸로낙하","rps":"바위","atk":9},{"name":"휘파람","rps":"보","atk":13}],"dex":"휘파람 소리로 어둠 속을 보는 박쥐. 초음파를 휘파람처럼 불어 세상을 그린다. 어둠을 무서워하는 게 아니라 오히려 어둠 속에서 가장 편안한데, 밝은 낮엔 눈이 부셔 거꾸로 매달려 낮잠을 잔다. 남과 다른 방식으로 세상을 보는 것도 하나의 재능이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"117","name":"음속박쥐","type":"풍","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"음속날개","rps":"가위","atk":18},{"name":"충격파돌진","rps":"바위","atk":13},{"name":"초음파진동","rps":"보","atk":18}],"dex":"날갯소리보다 몸이 먼저 도착한다는 음속 박쥐. 소리를 앞지르는 속도로 날면 뒤늦게 '펑' 하는 충격파가 따라온다. 그 엄청난 속도로 무엇을 하느냐면, 길 잃고 우는 아이의 목소리를 누구보다 먼저 찾아가는 일이다. 빠름은 누군가를 구하기 위해 쓰일 때 가장 아름답다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"118","name":"돌풍여우","type":"풍","grade":"B","hp":50,"isFinal":false,"evolveTo":"119","skills":[{"name":"바람꼬리날","rps":"가위","atk":18},{"name":"질주들이받기","rps":"바위","atk":13},{"name":"모래돌풍","rps":"보","atk":15}],"dex":"꼬리가 지나가면 낙엽이 춤추는 돌풍 여우. 바람처럼 자유로워 어디에도 매이지 않는다. 하지만 딱 한 곳, 자기를 처음 재워준 낡은 사당만은 잊지 않고 계절마다 찾아온다. 자유로운 자에게도 돌아갈 자리 하나는 필요하다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"119","name":"신기루여우","type":"풍","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"환영꼬리검","rps":"가위","atk":22},{"name":"환영연타","rps":"바위","atk":18},{"name":"신기루장막","rps":"보","atk":20}],"dex":"아홉 개의 잔상 중 진짜는 하나뿐인 신기루 여우. 바람과 빛을 다뤄 제 모습을 여럿으로 흩뿌린다. 그 능력으로 사람을 홀린다는 오해를 받지만, 실은 외로움을 감추려 여러 모습을 만들어내는 것이다. 가장 화려한 환영 뒤엔 홀로인 진짜가 숨어 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"120","name":"깃털뱀","type":"풍","grade":"B","hp":50,"isFinal":false,"evolveTo":"121","skills":[{"name":"깃비늘날","rps":"가위","atk":15},{"name":"공중조르기","rps":"바위","atk":13},{"name":"깃털폭풍","rps":"보","atk":18}],"dex":"날개 없이 바람을 타고 나는 깃털 뱀. 온몸의 깃털 비늘로 기류를 읽어 하늘을 헤엄친다. 고대에는 하늘과 땅을 잇는 전령으로 여겨져 신성시되었다. 날개가 없어도 날 수 있다는 것 — 방법이 없어 보여도 길은 있다는 오랜 증거다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"121","name":"비상풍룡","type":"풍","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"용풍참","rps":"가위","atk":18},{"name":"급강하압박","rps":"바위","atk":15},{"name":"승천기류","rps":"보","atk":22}],"dex":"상승기류를 만들어내 하늘로 오르는 바람의 용. 이 녀석이 승천할 때 이는 바람은 마른 논에 단비를 몰고 온다. 낮은 곳에서 시작한 깃털 뱀이 마침내 용이 되어 하늘에 올랐듯, 모든 위대함은 낮은 곳에서 시작된다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"122","name":"구름갈기마","type":"풍","grade":"A","hp":75,"isFinal":false,"evolveTo":"123","skills":[{"name":"갈기바람날","rps":"가위","atk":18},{"name":"하늘발굽차기","rps":"바위","atk":22},{"name":"구름질주","rps":"보","atk":15}],"dex":"갈기가 뭉게구름으로 되어 있는 하늘의 망아지. 아직 날개가 완전치 않아 구름 사이를 폴짝폴짝 뛰어다닌다. 언젠가 하늘 끝까지 달리는 게 꿈이라, 매일 조금씩 더 높은 구름에 오른다. 꿈을 향해 매일 한 걸음씩, 그거면 충분하다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"123","name":"천마","type":"풍","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"천마일섬","rps":"가위","atk":22},{"name":"유성편자","rps":"바위","atk":26},{"name":"붕운질풍","rps":"보","atk":18}],"dex":"옛 왕릉 벽화에서 튀어나왔다는 전설의 말. 편자에서 유성이 튀고, 달리면 하늘에 흰 구름길이 그려진다. 천 년을 벽에 그려진 채 하늘을 그리워하다 마침내 뛰쳐나왔다. 간절히 바라면 그림조차 살아 움직인다는, 오래된 소망의 증거다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"124","name":"바람개비령","type":"풍","grade":"B","hp":50,"isFinal":false,"evolveTo":null,"skills":[{"name":"날개날","rps":"가위","atk":13},{"name":"회전박치기","rps":"바위","atk":15},{"name":"사방풍","rps":"보","atk":18}],"dex":"바람 없는 날에도 혼자 도는 바람개비 정령. 사실은 스스로 돌 수 있으면서도, 아이가 후 불어주면 세상 행복한 척 더 신나게 돈다. 남을 기쁘게 하려 기꺼이 속아주는 다정함. 때로는 모른 척 속아주는 것도 사랑이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"125","name":"제트매","type":"풍","grade":"A","hp":75,"isFinal":false,"evolveTo":null,"skills":[{"name":"초음속발톱","rps":"가위","atk":24},{"name":"음속돌파","rps":"바위","atk":18},{"name":"소닉붐","rps":"보","atk":18}],"dex":"급강하 속도가 소리를 앞지르는 제트 매. 하늘의 가장 빠른 사냥꾼이지만, 그 속도를 뽐내려 나는 게 아니다. 저 멀리 위기에 처한 동료에게 한순간이라도 빨리 닿기 위해 매일 더 빨라진다. 속도의 이유가 분명할 때, 그 빠름엔 품격이 생긴다.","category":"일반","wildSpawn":true,"safariOnly":true,"evolveWins":null},{"id":"126","name":"창천대붕","type":"풍","grade":"S","hp":105,"isFinal":false,"evolveTo":null,"skills":[{"name":"구만리깃날","rps":"가위","atk":22},{"name":"대붕날개치기","rps":"바위","atk":22},{"name":"붕정만리","rps":"보","atk":22}],"dex":"날개를 펴면 하늘이 어두워진다는 전설의 대붕. 한번 날개짓하면 구만 리를 난다는 이 새는, 장자의 이야기 속에서 걸어 나온 듯하다. 작은 물고기가 변해 이 거대한 새가 되었다는 전설처럼, 모든 존재는 상상 너머로 커질 수 있는 가능성을 품고 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"127","name":"스타피바라","type":"에스퍼","grade":"C","hp":30,"isFinal":false,"evolveTo":"128","skills":[{"name":"별빛할퀴기","rps":"가위","atk":9},{"name":"느긋한몸통지압","rps":"바위","atk":13},{"name":"반짝온천김","rps":"보","atk":11}],"dex":"온천에 별이 비치는 밤에 나타나는 카피바라. 세상 무엇에도 서두르지 않는 느긋함의 대명사다. 온천에 몸을 담그고 별을 세다 잠드는 게 취미인데, 그 옆에 있으면 신기하게도 모든 걱정이 스르르 녹는다. 가끔은 아무것도 안 하는 것이 가장 좋은 처방이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"128","name":"유성카피바라","type":"에스퍼","grade":"B","hp":50,"isFinal":false,"evolveTo":"129","skills":[{"name":"유성이빨","rps":"가위","atk":13},{"name":"혜성몸통박치기","rps":"바위","atk":18},{"name":"별자리온천","rps":"보","atk":15}],"dex":"등에 별자리 무늬가 떠오르는 카피바라. 밤이 깊을수록 무늬가 또렷해져, 등만 보고도 계절을 알 수 있다. 여전히 느긋하지만, 별에 관한 것이라면 누구보다 진지해진다. 좋아하는 것 앞에서 진지해지는 건, 느긋한 자에게도 있는 열정이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"129","name":"은하대현수","type":"에스퍼","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"은하절단","rps":"가위","atk":15},{"name":"중력장압축","rps":"바위","atk":18},{"name":"대우주개안","rps":"보","atk":22}],"dex":"우주의 이치를 절반쯤 깨달은 카피바라 현자. 그 느긋함의 끝에서 마침내 우주의 리듬과 하나가 되었다. 서두르지 않고 자연의 흐름을 따르는 것이야말로 가장 깊은 지혜임을, 이 현자는 온몸으로 보여준다. 노자가 말한 무위(無爲)가 이런 모습일까.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"130","name":"스파크페럿","type":"에스퍼","grade":"C","hp":30,"isFinal":false,"evolveTo":"131","skills":[{"name":"정전기발톱","rps":"가위","atk":13},{"name":"찌릿돌진","rps":"바위","atk":11},{"name":"스파크","rps":"보","atk":9}],"dex":"만지면 찌릿, 겨울엔 특히 위험한 정전기 페럿. 본인도 제 전기를 어쩌지 못해, 좋아하는 사람을 안으려다 서로 깜짝 놀라기 일쑤다. 그래도 포기하지 않고 조심조심 다가가는 그 마음이 어여쁘다. 상처받을 걸 알면서도 다가가는 게 용기다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"131","name":"번개족제비","type":"에스퍼","grade":"B","hp":50,"isFinal":false,"evolveTo":"132","skills":[{"name":"뇌광엄니","rps":"가위","atk":18},{"name":"전광석화돌진","rps":"바위","atk":15},{"name":"방전","rps":"보","atk":13}],"dex":"번개가 치면 신이 나서 뛰어다니는 번개 족제비. 다른 동물들은 천둥을 무서워하는데, 이 녀석만은 번개와 함께 춤을 춘다. 두려움의 대상을 친구로 삼는 법을 아는 것이다. 무서운 것도 알고 보면 함께 놀 수 있는 상대일지 모른다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"132","name":"뇌신수","type":"에스퍼","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"뇌신참","rps":"가위","atk":22},{"name":"벼락망치","rps":"바위","atk":29},{"name":"천둥번개폭풍","rps":"보","atk":18}],"dex":"울음소리가 곧 천둥이라는 뇌신 짐승. 하늘을 가르는 번개는 이 녀석이 세상에 보내는 신호다. 무섭게만 보이지만, 이 천둥은 오랜 가뭄 끝에 단비를 부르는 신호이기도 하다. 두려움과 축복은 종종 같은 얼굴로 찾아온다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"133","name":"리틀사이커","type":"에스퍼","grade":"C","hp":30,"isFinal":false,"evolveTo":"134","skills":[{"name":"염동컷","rps":"가위","atk":11},{"name":"염력밀치기","rps":"바위","atk":9},{"name":"사념파","rps":"보","atk":13}],"dex":"숟가락 구부리기가 특기인 꼬마 초능력자. 아직 힘 조절이 서툴러, 집중하면 주변 물건이 우르르 떠올랐다 와르르 떨어진다. 그래도 매일 숟가락 하나를 붙잡고 연습하는 성실함이 있다. 작은 재능도 매일 갈고닦으면 언젠가 빛난다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"134","name":"염동술사","type":"에스퍼","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"정신칼날","rps":"가위","atk":13},{"name":"염동프레스","rps":"바위","atk":15},{"name":"정신파동","rps":"보","atk":18}],"dex":"손대지 않고 상대를 넘어뜨리는 염동술사. 이제는 수십 개의 물건을 동시에 다룰 만큼 정교해졌다. 하지만 이 힘을 뽐내기보다, 몸이 불편한 이를 위해 높은 곳의 물건을 대신 내려주는 데 쓴다. 힘의 크기보다 쓰임새가 그 사람을 말해준다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"135","name":"타로라쿤","type":"에스퍼","grade":"C","hp":30,"isFinal":false,"evolveTo":"136","skills":[{"name":"카드긋기","rps":"가위","atk":11},{"name":"수정구굴리기","rps":"바위","atk":9},{"name":"점괘속삭임","rps":"보","atk":13}],"dex":"쓰레기통 대신 타로카드를 뒤지는 별난 너구리. 주워 모은 카드로 어설픈 점을 치는데, 신기하게도 '오늘 좋은 일이 생긴다'는 점괘만 골라 낸다. 나쁜 점괘는 슬쩍 감춰버리는 그 마음이, 실은 남을 위한 다정한 거짓말이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"136","name":"예언너구리","type":"에스퍼","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"미래베기","rps":"가위","atk":15},{"name":"운명의철퇴","rps":"바위","atk":13},{"name":"예지몽","rps":"보","atk":18}],"dex":"상대의 수를 반 박자 먼저 보는 예언 너구리. 미래를 볼 수 있게 되었지만, 결코 나쁜 미래는 말해주지 않는다. 정해진 불행을 아는 것보다 희망을 품고 오늘을 사는 게 낫다는 걸 알기 때문이다. 미래를 아는 것보다 중요한 건 오늘을 사는 태도다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"137","name":"드림램","type":"에스퍼","grade":"C","hp":30,"isFinal":false,"evolveTo":"138","skills":[{"name":"잠꼬대할퀴기","rps":"가위","atk":9},{"name":"몽중박치기","rps":"바위","atk":11},{"name":"자장가","rps":"보","atk":13}],"dex":"이 녀석 옆에선 누구나 스르르 졸음이 오는 꿈의 아기 양. 잠 못 드는 밤, 이 양을 떠올리며 수를 세면 정말로 잠이 온다. 정작 본인은 남 재우느라 정작 자기는 늘 잠이 부족해, 낮에도 꾸벅꾸벅 존다. 남을 돌보는 이가 정작 자신은 못 챙기는 법이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":2},{"id":"138","name":"몽유양치기","type":"에스퍼","grade":"B","hp":50,"isFinal":true,"evolveTo":null,"skills":[{"name":"꿈가위","rps":"가위","atk":15},{"name":"악몽압박","rps":"바위","atk":13},{"name":"최면뿔피리","rps":"보","atk":18}],"dex":"남의 꿈속을 산책하는 취미가 있는 몽유 양치기. 뿔피리를 불면 사람들이 깊은 잠에 빠져든다. 악몽에 시달리는 아이의 꿈에 몰래 들어가 나쁜 꿈을 양 떼처럼 몰아내 준다. 우리가 모르는 새, 누군가는 우리의 나쁜 밤을 지켜주고 있는지도 모른다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"139","name":"뇌전문어","type":"에스퍼","grade":"B","hp":50,"isFinal":false,"evolveTo":"140","skills":[{"name":"전기다리채찍","rps":"가위","atk":15},{"name":"감전포옹","rps":"바위","atk":18},{"name":"먹물플라즈마","rps":"보","atk":13}],"dex":"여덟 개의 다리가 전부 피뢰침인 전기 문어. 밤바다에서 온몸을 푸르게 빛내며 떠다닌다. 다리가 여덟이라 한 번에 여덟 가지 일을 할 수 있는데, 정작 가장 잘하는 건 여덟 다리로 친구를 한꺼번에 안아주는 것이다. 많이 가진 자의 미덕은 많이 나누는 것이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"140","name":"전자기크라켄","type":"에스퍼","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"전자메스","rps":"가위","atk":18},{"name":"심해구속","rps":"바위","atk":22},{"name":"전자폭풍","rps":"보","atk":15}],"dex":"주변 전자기기가 오작동한다는 거대 크라켄. 깊은 바다에서 전자기 폭풍을 일으키는 심해의 지배자다. 하지만 이 전자기장은 사실 심해의 길 잃은 생물들에게 나침반이 되어준다. 혼돈처럼 보이는 힘도, 누군가에겐 길을 찾는 등대가 된다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"141","name":"거울정령","type":"에스퍼","grade":"B","hp":50,"isFinal":false,"evolveTo":"142","skills":[{"name":"반사날","rps":"가위","atk":15},{"name":"거울파편찍기","rps":"바위","atk":13},{"name":"반전빛","rps":"보","atk":18}],"dex":"거울 속에서 이쪽을 가만히 보고 있는 거울 정령. 마주 선 이의 모습을 그대로 비추는데, 겉모습이 아니라 마음을 비춘다는 소문이 있다. 이 정령 앞에서 활짝 웃으면 정령도 웃고, 찌푸리면 정령도 찌푸린다. 세상은 내가 대하는 만큼 나를 대한다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":3},{"id":"142","name":"만화경정령","type":"에스퍼","grade":"A","hp":75,"isFinal":true,"evolveTo":null,"skills":[{"name":"굴절검무","rps":"가위","atk":18},{"name":"만화경분쇄","rps":"바위","atk":15},{"name":"무한반사","rps":"보","atk":22}],"dex":"천 개의 조각, 천 개의 시선을 지닌 만화경 정령. 몸을 조금만 움직여도 전혀 다른 무늬가 펼쳐진다. 같은 세상도 보는 각도에 따라 무한히 다르게 보인다는 걸 온몸으로 말한다. 하나의 정답만 고집할 때, 우리는 나머지 999개의 아름다움을 놓친다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"143","name":"극광록","type":"에스퍼","grade":"A","hp":75,"isFinal":false,"evolveTo":"144","skills":[{"name":"오로라뿔","rps":"가위","atk":18},{"name":"극광돌진","rps":"바위","atk":15},{"name":"북극성빛","rps":"보","atk":22}],"dex":"뿔 사이로 오로라가 흐르는 신비한 사슴. 극지의 긴 밤을 밝히려 밤하늘이 이 녀석의 뿔에 빛을 맡겼다고 전해진다. 어두운 곳을 지날 때면 뿔을 환히 밝혀 뒤따르는 이들의 길을 비춘다. 자기 빛으로 남의 길을 밝히는 것보다 고귀한 일은 없다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":5},{"id":"144","name":"극광신록","type":"에스퍼","grade":"S","hp":105,"isFinal":true,"evolveTo":null,"skills":[{"name":"오로라검","rps":"가위","atk":26},{"name":"극야강타","rps":"바위","atk":22},{"name":"극광커튼","rps":"보","atk":24}],"dex":"오로라가 걷는 모습이라 전해지는 극광의 신록. 이 사슴이 극지를 거닐면 하늘에 거대한 빛의 커튼이 드리운다. 사람들은 그 빛을 보며 소원을 빌고, 신록은 그 소원들을 뿔에 담아 별에게 전한다고 한다. 우리의 소망은 어딘가로 반드시 전해지고 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"145","name":"독심부엉이","type":"에스퍼","grade":"B","hp":50,"isFinal":false,"evolveTo":null,"skills":[{"name":"심안깃날","rps":"가위","atk":13},{"name":"독심박치기","rps":"바위","atk":15},{"name":"마음소란","rps":"보","atk":18}],"dex":"고개를 갸웃하면 상대의 속마음을 들여다보는 독심 부엉이. 남의 마음을 읽을 수 있지만 결코 그것으로 남을 곤란하게 하지 않는다. 오히려 말 못 하고 속앓이하는 이의 마음을 대신 알아채, 슬며시 곁을 지켜준다. 이해받는다는 느낌만으로 위로가 될 때가 있다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"146","name":"중력령","type":"에스퍼","grade":"A","hp":75,"isFinal":false,"evolveTo":null,"skills":[{"name":"중력절단","rps":"가위","atk":15},{"name":"초중력압","rps":"바위","atk":22},{"name":"무중력장","rps":"보","atk":18}],"dex":"그의 주변에선 위아래가 뒤바뀌는 중력의 정령. 사물을 띄우고 떨어뜨리기를 마음대로 한다. 무거운 짐을 진 이를 보면 슬며시 중력을 덜어주어 발걸음을 가볍게 해준다. 누군가의 짐을 대신 져줄 순 없어도, 조금 가볍게 해줄 수는 있다.","category":"일반","wildSpawn":true,"safariOnly":true,"evolveWins":null},{"id":"147","name":"차원나비","type":"에스퍼","grade":"S","hp":105,"isFinal":false,"evolveTo":null,"skills":[{"name":"차원가위","rps":"가위","atk":24},{"name":"시공붕괴","rps":"바위","atk":18},{"name":"나비효과","rps":"보","atk":24}],"dex":"날갯짓 한 번에 어제와 내일이 뒤섞인다는 차원 나비. 그 작은 날갯짓이 지구 반대편에 폭풍을 일으킬 수도 있다. 하지만 이 나비는 그 힘을 알기에 누구보다 신중하게 난다. 작은 존재의 작은 행동 하나가 세상을 바꿀 수 있다는 것 — 그것은 경고이자 희망이다.","category":"일반","wildSpawn":true,"safariOnly":false,"evolveWins":null},{"id":"148","name":"주작","type":"불","grade":"S","hp":105,"isFinal":false,"evolveTo":null,"skills":[{"name":"주작화익","rps":"가위","atk":26},{"name":"남방화락","rps":"바위","atk":22},{"name":"불사의춤","rps":"보","atk":24}],"dex":"남쪽 하늘을 지키는 불의 신조. 오방색 중 붉음(南)을 관장하며, 죽어도 재에서 다시 태어나기를 반복한다. 끝과 시작이 하나임을 아는 이 새는, 무언가 사라질 때 슬퍼하는 이에게 조용히 날개를 펼쳐 보인다. 모든 끝은 새로운 시작의 다른 이름이다.","category":"사신수","wildSpawn":false,"safariOnly":false,"evolveWins":null},{"id":"149","name":"현무","type":"물","grade":"S","hp":105,"isFinal":false,"evolveTo":null,"skills":[{"name":"현갑참","rps":"가위","atk":18},{"name":"현무진","rps":"바위","atk":29},{"name":"북명대해","rps":"보","atk":22}],"dex":"북쪽 바다를 지키는 거북뱀 신수. 오방색 중 검음(北)을 관장하며, 거북의 인내와 뱀의 지혜를 한 몸에 지녔다. 수천 년을 살며 세상의 흥망을 지켜본 이 신수는, 조급한 이에게 늘 같은 말을 건넨다. \"기다림도 힘이다.\"","category":"사신수","wildSpawn":false,"safariOnly":false,"evolveWins":null},{"id":"150","name":"청룡","type":"풀","grade":"S","hp":105,"isFinal":false,"evolveTo":null,"skills":[{"name":"청린검","rps":"가위","atk":24},{"name":"용틀임강타","rps":"바위","atk":22},{"name":"동방청우","rps":"보","atk":20}],"dex":"동쪽 숲과 봄을 다스리는 청룡. 오방색 중 푸름(東)을 관장하며, 이 용이 승천하면 겨우내 잠든 대지에 봄이 깨어난다. 매년 어김없이 봄을 데려오는 성실함으로, 세상에 변하지 않는 약속 하나쯤은 있음을 증명한다.","category":"사신수","wildSpawn":false,"safariOnly":false,"evolveWins":null},{"id":"151","name":"백호","type":"철","grade":"S","hp":105,"isFinal":false,"evolveTo":null,"skills":[{"name":"백호조참","rps":"가위","atk":29},{"name":"서방일격","rps":"바위","atk":22},{"name":"금풍포효","rps":"보","atk":18}],"dex":"서쪽을 지키는 강철빛 백호. 오방색 중 흼(西)과 가을을 관장하며, 그 포효는 가을 서릿바람이 되어 곡식을 여물게 한다. 용맹함의 상징이지만, 이 백호가 진정 지키는 것은 힘없는 것들의 평온한 수확이다. 강함은 약함을 지킬 때 비로소 의미를 얻는다.","category":"사신수","wildSpawn":false,"safariOnly":false,"evolveWins":null}];
 const HP_MAP = {"001":30,"002":50,"003":75,"004":30,"005":50,"006":105,"007":30,"008":50,"009":30,"010":50,"011":30,"012":50,"013":50,"014":75,"015":50,"016":75,"017":75,"018":105,"019":50,"020":75,"021":105,"022":30,"023":50,"024":75,"025":30,"026":50,"027":105,"028":30,"029":50,"030":30,"031":50,"032":30,"033":50,"034":50,"035":75,"036":50,"037":75,"038":75,"039":105,"040":50,"041":75,"042":105,"043":30,"044":50,"045":75,"046":30,"047":50,"048":105,"049":30,"050":50,"051":30,"052":50,"053":30,"054":50,"055":50,"056":75,"057":50,"058":75,"059":75,"060":105,"061":50,"062":75,"063":105,"064":30,"065":50,"066":75,"067":30,"068":50,"069":105,"070":30,"071":50,"072":30,"073":50,"074":30,"075":50,"076":50,"077":75,"078":50,"079":75,"080":75,"081":105,"082":50,"083":75,"084":105,"085":30,"086":50,"087":75,"088":30,"089":50,"090":105,"091":30,"092":50,"093":30,"094":50,"095":30,"096":50,"097":50,"098":75,"099":50,"100":75,"101":75,"102":105,"103":50,"104":75,"105":105,"106":30,"107":50,"108":75,"109":30,"110":50,"111":105,"112":30,"113":50,"114":30,"115":50,"116":30,"117":50,"118":50,"119":75,"120":50,"121":75,"122":75,"123":105,"124":50,"125":75,"126":105,"127":30,"128":50,"129":75,"130":30,"131":50,"132":105,"133":30,"134":50,"135":30,"136":50,"137":30,"138":50,"139":50,"140":75,"141":50,"142":75,"143":75,"144":105,"145":50,"146":75,"147":105,"148":105,"149":105,"150":105,"151":105};
 
 const $=s=>document.querySelector(s);
+function toast(msg,err){const t=$("#toast");t.textContent=msg;t.className="toast on"+(err?" err":"");clearTimeout(t._tm);t._tm=setTimeout(()=>t.classList.remove("on"),2600);}
 $("#passGo").addEventListener("click",()=>{
-  if($("#passIn").value!==ADMIN_PASS){alert("암호가 다릅니다");return;}
-  $("#gate").style.display="none";$("#app").style.display="block";boot();
-});
+  if($("#passIn").value!==ADMIN_PASS){toast("암호가 다릅니다",1);return;}
+  $("#gate").style.display="none";$("#app").style.display="block";boot();});
 $("#passIn").addEventListener("keydown",e=>{if(e.key==="Enter")$("#passGo").click();});
+document.querySelectorAll(".tabs button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("on"));b.classList.add("on");
+    document.querySelectorAll(".tabview").forEach(x=>x.classList.remove("on"));
+    $("#t-"+b.dataset.t).classList.add("on");});});
 
-let DB=null,ST=null;
+let DB=null,ST=null,GAME={},OV={},CUS={},PCACHE={},QCACHE={},PSEL=null,_lastTe=0;
+const PH_INFO={free:["🧪 자유 모드","모든 기능 열림 (테스트용)"],lobby:["⏳ 대기 중","참가자 입장 대기 — 탐험/배틀 잠김"],
+round1:["🌲 1라운드 — 사파리","탐험·포획 활성 / 배틀·치유 잠김"],round2:["⚔️ 2라운드 — 배틀","배틀·치유 활성 / 탐험 잠김"],
+ended:["🏁 게임 종료","전 기능 잠김 · 참가자 복습 노트 자동 표시"]};
 function boot(){
-  if(!FIREBASE_CONFIG.apiKey){alert("FIREBASE_CONFIG를 파일 상단에 입력하세요");return;}
+  if(!FIREBASE_CONFIG.apiKey){toast("FIREBASE_CONFIG를 파일 상단에 입력하세요",1);return;}
   firebase.initializeApp(FIREBASE_CONFIG);
   DB=firebase.database();ST=firebase.storage();
   firebase.auth().signInAnonymously();
   DB.ref("game/state").on("value",s=>{
-    const v=s.val()||{};
-    $("#phaseStat").textContent="현재: "+(v.phase||"-")+(v.timerEnd?` · 타이머 ${new Date(v.timerEnd).toLocaleTimeString()}`:"");
-    document.querySelectorAll("#phaseBtns button").forEach(b=>b.classList.toggle("on",b.dataset.ph===v.phase));
+    GAME=s.val()||{};const ph=GAME.phase||"free";
+    if(GAME.timerEnd&&GAME.timerEnd!==_lastTe){admTimerFired=false;_lastTe=GAME.timerEnd;}
+    const[nm,ds]=PH_INFO[ph]||[ph,""];
+    $("#phaseBig").className="phase-big p-"+ph;
+    $("#phName").textContent=nm;$("#phDesc").textContent=ds;
+    document.querySelectorAll("#phaseBtns button").forEach(b=>b.classList.toggle("on",b.dataset.ph===ph));
   });
+  setInterval(()=>{
+    const te=GAME.timerEnd||0;
+    if(!te){$("#phTimer").textContent="";admTimerFired=true;return;}
+    const r=Math.max(0,Math.floor((te-Date.now())/1000));
+    $("#phTimer").textContent="⏱ "+Math.floor(r/60)+":"+String(r%60).padStart(2,"0");
+    if(r===0&&!admTimerFired){admTimerFired=true;
+      toast("⏱ 타이머 종료! 참가자 전원에게 종료 팝업이 표시되었습니다 — 다음 라운드로 전환하세요");}
+  },500);
+  DB.ref("screen/mode").on("value",s=>{
+    const m=s.val()||"leaderboard";
+    $("#scLb").classList.toggle("on",m==="leaderboard");
+    $("#scHeal").classList.toggle("on",m==="heal");});
   DB.ref("stations/heal").on("value",s=>{
     const v=s.val()||{};
-    $("#healStat").textContent=v.open?`열림 · 현재코드 ${v.code||"-"}`:"닫힘";
-  });
+    $("#healStat").textContent=v.open?"🟢 열림":"🔴 닫힘";
+    $("#healCode").textContent=v.code||"------";});
+  DB.ref("game/entryCode").on("value",s=>{$("#entryNow").textContent=s.val()||"(설정 안 됨 — 자유 입장)";});
+  DB.ref("game/timerPreset").on("value",s=>{PRESET=+s.val()||0;
+    $("#timerPresetStat").textContent=PRESET?`⏱ 라운드 시작 시 자동 타이머: ${PRESET}분`:"타이머 미설정 — 라운드 시작 시 타이머 없이 진행됩니다";});
   DB.ref("players").on("value",s=>{
-    const P=s.val()||{};const rows=Object.entries(P).map(([uid,p])=>({uid,...p}));
+    PCACHE=s.val()||{};const rows=Object.entries(PCACHE).map(([uid,p])=>({uid,...p}));
     rows.sort((a,b)=>(b.score||0)-(a.score||0));
     $("#pCount").textContent=rows.length+"명";
     $("#pTable").innerHTML=rows.map(p=>{
       const coll=p.collection||[];const faint=coll.filter(c=>c.hp<=0).length;
-      return `<tr><td>${p.name||"?"}</td><td>${p.score||0}</td><td>${coll.length}</td>
-      <td>${faint?`<span style="color:#ff8a8a">${faint}</span>`:0}</td><td>${(p.dex||[]).length}</td>
-      <td><button data-a="heal" data-u="${p.uid}">전체회복</button>
-      <button data-a="p10" data-u="${p.uid}">+10점</button>
-      <button data-a="m10" data-u="${p.uid}">-10점</button>
-      <button class="red" data-a="del" data-u="${p.uid}">삭제</button></td></tr>`;}).join("");
-    $("#pTable").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>playerAction(b.dataset.a,b.dataset.u)));
+      const wl=p.wl||{w:0,l:0,d:0};const tot=wl.w+wl.l+wl.d;
+      const qh=p.qhist||[];const qc=qh.filter(h=>h.correct).length;
+      return `<tr><td><b style="color:var(--gold);cursor:pointer;text-decoration:underline;" data-view="${p.uid}">${p.name||"?"}</b></td>
+      <td>${p.title||"-"}</td><td>${p.score||0}</td>
+      <td>${wl.w}-${wl.l}${wl.d?`-${wl.d}`:""}</td><td>${tot?Math.round(wl.w/tot*100)+"%":"-"}</td>
+      <td><span style="color:#7ee08a">${qc}</span> / <span style="color:#ff8a8a">${qh.length-qc}</span></td>
+      <td>${coll.length}</td>
+      <td>${faint?`<span style="color:#ff8a8a">${faint}</span>`:0}</td>
+      <td><button data-a="heal" data-u="${p.uid}" data-n="${p.name||""}">전체회복</button>
+      <button data-a="p10" data-u="${p.uid}">+10</button><button data-a="m10" data-u="${p.uid}">-10</button>
+      <button class="red" data-a="del" data-u="${p.uid}" data-n="${p.name||""}">삭제</button></td></tr>`;}).join("")
+      ||'<tr><td colspan="9" class="stat">아직 참가자가 없습니다</td></tr>';
+    $("#pTable").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>playerAction(b.dataset.a,b.dataset.u,b.dataset.n)));
+    $("#pTable").querySelectorAll("[data-view]").forEach(el=>el.addEventListener("click",()=>openPlayer(el.dataset.view)));
   });
   DB.ref("quizzes").on("value",s=>{
     const Q=s.val()||{};const arr=Object.entries(Q);
     $("#qCount").textContent=arr.length+"문항"+(arr.length?"":" — 비어있음(앱은 내장 60문항 사용)");
+    QCACHE=Q;
     $("#qList").innerHTML=arr.map(([k,q])=>`
-      <div class="qitem"><div class="qq"><b>[${q.difficulty}]</b> ${q.question}
-      <div style="color:var(--sub);font-size:.72rem;">정답: ${q.choices?q.choices[q.answer]:"?"}</div></div>
-      <button class="red" data-k="${k}">삭제</button></div>`).join("");
-    $("#qList").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>DB.ref("quizzes/"+b.dataset.k).remove()));
+      <div class="qitem"><div class="qq"><b>[${({easy:"쉬움",mid:"중간",hard:"어려움"})[q.difficulty]||q.difficulty}]</b> ${q.question}
+      <div class="stat">정답: ${q.choices?q.choices[q.answer]:"?"} ${q.category?`· ${q.category}`:""}</div></div>
+      <button data-e="${k}">편집</button><button class="red" data-k="${k}">삭제</button></div>`).join("");
+    $("#qList").querySelectorAll("[data-k]").forEach(b=>b.addEventListener("click",()=>{DB.ref("quizzes/"+b.dataset.k).remove();toast("문항 삭제됨");}));
+    $("#qList").querySelectorAll("[data-e]").forEach(b=>b.addEventListener("click",()=>loadQuizEdit(b.dataset.e)));
   });
+  DB.ref("monsterOverrides").on("value",s=>{OV=s.val()||{};renderMonList();});
+  DB.ref("customMonsters").on("value",s=>{CUS=s.val()||{};renderMonList();});
+  $("#mSearch").addEventListener("input",renderMonList);
+  renderMonList();
 }
+/* ---- 운영 ---- */
+const PH_NM={lobby:"대기",round1:"1라운드",round2:"2라운드",ended:"게임 종료",free:"자유 모드"};
 document.querySelectorAll("#phaseBtns button").forEach(b=>{
-  b.addEventListener("click",()=>DB.ref("game/state/phase").set(b.dataset.ph));
-});
+  b.addEventListener("click",()=>{
+    const ph=b.dataset.ph;
+    const withTimer=(ph==="round1"||ph==="round2")&&PRESET>0;
+    DB.ref("game/state").update({phase:ph,timerEnd:withTimer?Date.now()+PRESET*60000:0});
+    toast("라운드 전환: "+(PH_NM[ph]||ph)+(withTimer?` · ⏱ ${PRESET}분 타이머 자동 시작`:""));});});
 $("#timerSet").addEventListener("click",()=>{
-  const m=+$("#timerMin").value;if(!m)return;
-  DB.ref("game/state/timerEnd").set(Date.now()+m*60000);
-});
-$("#timerClear").addEventListener("click",()=>DB.ref("game/state/timerEnd").set(0));
+  const m=+$("#timerMin").value;if(!m){toast("분을 입력하세요",1);return;}
+  DB.ref("game/timerPreset").set(m);toast(`타이머 설정 완료 — 라운드 시작 시 ${m}분 자동 적용`);});
+$("#timerClear").addEventListener("click",()=>{
+  DB.ref("game/state/timerEnd").set(0);DB.ref("game/timerPreset").remove();
+  toast("타이머 해제 (진행 중 타이머·자동 적용 모두 제거)");});
 document.querySelectorAll("[data-sc]").forEach(b=>{
-  b.addEventListener("click",()=>{DB.ref("screen/mode").set(b.dataset.sc);alert("스크린 모드: "+b.dataset.sc);});
-});
-$("#healOpen").addEventListener("click",()=>DB.ref("stations/heal/open").set(true));
-$("#healClose").addEventListener("click",()=>DB.ref("stations/heal/open").set(false));
+  b.addEventListener("click",()=>{DB.ref("screen/mode").set(b.dataset.sc);toast("스크린 모드: "+b.dataset.sc);});});
+$("#healOpen").addEventListener("click",()=>{DB.ref("stations/heal/open").set(true);toast("치유의 샘 열림");});
+$("#healClose").addEventListener("click",()=>{DB.ref("stations/heal/open").set(false);toast("치유의 샘 닫힘");});
 $("#noticeGo").addEventListener("click",()=>{
   const v=$("#noticeIn").value.trim();if(!v)return;
-  DB.ref("feed").push({msg:"📣 "+v,ts:firebase.database.ServerValue.TIMESTAMP});
-  $("#noticeIn").value="";
-});
-async function playerAction(a,uid){
+  DB.ref("feed").push({msg:"📣 "+v,type:"notice",ts:firebase.database.ServerValue.TIMESTAMP});
+  $("#noticeIn").value="";toast("공지 발송 완료 (전원 팝업)");});
+/* ---- 참가자 ---- */
+async function playerAction(a,uid,nm){
   const ref=DB.ref("players/"+uid);
-  if(a==="del"){if(confirm("이 참가자를 삭제할까요?"))ref.remove();return;}
+  if(a==="del"){if(confirm(nm+"님을 삭제할까요?")){ref.remove();toast(nm+"님 삭제됨");}return;}
   const snap=await ref.get();const p=snap.val();if(!p)return;
   if(a==="heal"){
-    /* 환수별 최대 HP 맵으로 정확 회복 */
     const coll=(p.collection||[]).map(c=>({...c,hp:HP_MAP[c.monsterId]||100}));
-    ref.child("collection").set(coll);
-  }
-  if(a==="p10")ref.child("score").set((p.score||0)+10);
-  if(a==="m10")ref.child("score").set(Math.max(0,(p.score||0)-10));
+    await ref.child("collection").set(coll);toast(nm+"님 환수 전체 회복 완료 ✅");}
+  if(a==="p10"){await ref.child("score").set((p.score||0)+10);toast(nm+"님 +10점");}
+  if(a==="m10"){await ref.child("score").set(Math.max(0,(p.score||0)-10));toast(nm+"님 -10점");}
 }
+function monName(id){const m=mergedMon(id);return m?m.name:"No."+id;}
+function monGrade(id){const m=mergedMon(id);return m?m.grade:"?";}
+function openPlayer(uid){
+  PSEL=uid;const p=PCACHE[uid];if(!p){toast("참가자 정보 없음",1);return;}
+  const coll=p.collection||[];const wl=p.wl||{w:0,l:0,d:0};const tot=wl.w+wl.l+wl.d;
+  const qh=(p.qhist||[]).slice();const qc=qh.filter(h=>h.correct).length;
+  const byQ={};qh.forEach(h=>{const id=h.q&&h.q.id;if(!id)return;(byQ[id]=byQ[id]||[]).push(h);});
+  $("#pmTitle").textContent=`👤 ${p.name||"?"} ${p.title||""} — 상세`;
+  $("#pmBody").innerHTML=`
+    <div class="stat" style="font-size:.86rem;">점수 <b>${p.score||0}</b> · 전적 <b>${wl.w}승 ${wl.l}패${wl.d?` ${wl.d}무`:""}</b>
+      (승률 ${tot?Math.round(wl.w/tot*100):0}%) · 퀴즈 <span style="color:#7ee08a">${qc}정</span>/<span style="color:#ff8a8a">${qh.length-qc}오</span> · 도감 ${(p.dex||[]).length}종</div>
+    <h3 style="margin-top:12px;">🐉 보유 환수 (${coll.length}마리) — 회수 가능</h3>
+    ${coll.length?coll.map(c=>`<div class="mitem"><div class="mi">
+      <b>${monName(c.monsterId)}</b> <span class="tag">${monGrade(c.monsterId)}</span>
+      <span class="stat" style="display:inline;">HP ${c.hp} · 승수 ${c.wins||0}${c.hp<=0?' · <span style="color:#ff8a8a">기절</span>':''}</span></div>
+      <button class="red" data-rm="${c.uid}">회수</button></div>`).join("")
+    :'<div class="stat">보유 환수 없음</div>'}
+    <h3 style="margin-top:14px;">🎁 환수 부여 (이벤트 지급)</h3>
+    <input id="giftSearch" placeholder="번호 또는 이름 검색 (예: 021, 화산제)">
+    <div id="giftList"></div>
+    <h3 style="margin-top:14px;">📝 퀴즈 이력 (${qh.length}건 · 최신순)</h3>
+    <div style="max-height:280px;overflow-y:auto;">
+    ${qh.length?qh.slice().reverse().map(h=>{
+      const tries=byQ[h.q&&h.q.id]||[];
+      const mastered=tries.some(t=>!t.correct)&&tries.length&&tries[tries.length-1].correct;
+      return `<div class="qitem"><div class="qq">
+      <span class="tag">${h.ctx||""}</span>${h.correct?"✅":"❌"} ${h.q?h.q.question:"?"}
+      ${mastered&&h.correct?'<span class="tag" style="color:#7ee08a">복습 마스터</span>':""}
+      <div class="stat">내 답: ${h.q?h.q.choices[h.myPick]:"?"}${!h.correct&&h.q?` · 정답: ${h.q.choices[h.q.answer]}`:""} · ${h.t||""}</div>
+      </div></div>`;}).join("")
+    :'<div class="stat">퀴즈 기록 없음</div>'}</div>`;
+  $("#pModal").style.display="block";
+  $("#pmClose").onclick=()=>{$("#pModal").style.display="none";PSEL=null;};
+  $("#pmBody").querySelectorAll("[data-rm]").forEach(b=>b.onclick=async()=>{
+    if(!confirm("이 환수를 회수할까요?"))return;
+    await DB.ref("removals/"+uid).push({instUid:b.dataset.rm,ts:Date.now()});
+    toast("회수 완료 — 참가자 앱에 즉시 반영 (상세를 다시 열면 갱신)");});
+  const gi=$("#giftSearch");
+  gi.oninput=()=>{
+    const kw=gi.value.trim();
+    const list=kw?allIds().map(mergedMon).filter(Boolean).filter(m=>!m.disabled&&(m.id.includes(kw)||m.name.includes(kw))).slice(0,8):[];
+    $("#giftList").innerHTML=list.map(m=>`<div class="mitem"><div class="mi"><b>No.${m.id} ${m.name}</b> <span class="tag">${m.type} ${m.grade}</span></div>
+      <button class="gold" data-g="${m.id}">부여</button></div>`).join("");
+    $("#giftList").querySelectorAll("[data-g]").forEach(b=>b.onclick=async()=>{
+      await DB.ref("gifts/"+uid).push({monsterId:b.dataset.g,ts:Date.now()});
+      toast(`${monName(b.dataset.g)} 부여 완료 — 참가자에게 선물 팝업이 뜹니다`);});
+  };
+}
+/* ---- 문제은행 ---- */
+const DIFF_KO={"쉬움":"easy","중간":"mid","어려움":"hard","easy":"easy","mid":"mid","hard":"hard"};
+$("#xlsxTemplate").addEventListener("click",()=>{
+  const ws=XLSX.utils.aoa_to_sheet([
+    ["문제","보기1(정답)","보기2","보기3","보기4","난이도","분류"],
+    ["우리 회사의 창립 연도는?","1947년","1952년","1963년","1971년","쉬움","회사상식"],
+    ["석유화학 공정에서 NCC의 주 생산물은?","에틸렌","암모니아","황산","시멘트","중간","직무"]]);
+  ws["!cols"]=[{wch:40},{wch:16},{wch:14},{wch:14},{wch:14},{wch:8},{wch:10}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"문항");
+  XLSX.writeFile(wb,"환수원정대_문항양식.xlsx");});
+$("#xlsxGo").addEventListener("click",async()=>{
+  const f=$("#xlsxFile").files[0];if(!f){toast("엑셀 파일을 선택하세요",1);return;}
+  const buf=await f.arrayBuffer();
+  const wb=XLSX.read(buf);const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1}).slice(1).filter(r=>r&&r[0]);
+  const log=$("#xlsxLog");log.style.display="block";log.innerHTML="";
+  const up={};let ok=0,fail=0;
+  rows.forEach((r,i)=>{
+    const[q,c0,c1,c2,c3,dRaw,cat]=r.map(x=>String(x??"").trim());
+    const d=DIFF_KO[dRaw]||"easy";
+    if(!q||!c0||!c1||!c2||!c3){fail++;log.innerHTML+=`<div>⚠️ ${i+2}행: 문제/보기 누락 — 건너뜀</div>`;return;}
+    const id="qx"+Date.now()+"_"+i;
+    up[id]={id,question:q,choices:[c0,c1,c2,c3],answer:0,difficulty:d,category:cat||"엑셀업로드"};ok++;});
+  if(ok)await DB.ref("quizzes").update(up);
+  log.innerHTML+=`<div><b>완료: ${ok}문항 업로드${fail?`, ${fail}행 건너뜀`:""}</b></div>`;
+  toast(`엑셀 업로드 완료: ${ok}문항`);});
 $("#qUploadDefault").addEventListener("click",async()=>{
-  if(!confirm("내장 60문항을 문제은행에 업로드할까요? (기존 유지, 추가됨)"))return;
+  if(!confirm("내장 60문항을 업로드할까요? (기존 유지, 추가)"))return;
   const up={};DEFAULT_QUIZ.forEach(q=>up[q.id]=q);
-  await DB.ref("quizzes").update(up);alert("업로드 완료");
-});
+  await DB.ref("quizzes").update(up);toast("기본 60문항 업로드 완료");});
+let qEditKey=null,PRESET=0,admTimerFired=true;
+function loadQuizEdit(k){
+  const q=QCACHE[k];if(!q)return;
+  qEditKey=k;
+  $("#qQ").value=q.question;
+  const ch=[...(q.choices||["","","",""])];const ans=ch.splice(q.answer||0,1)[0]||"";
+  $("#qC0").value=ans;$("#qC1").value=ch[0]||"";$("#qC2").value=ch[1]||"";$("#qC3").value=ch[2]||"";
+  $("#qD").value=q.difficulty||"easy";
+  $("#qAdd").textContent="✏️ 수정 저장";$("#qEditCancel").style.display="inline-block";
+  $("#qQ").scrollIntoView({behavior:"smooth",block:"center"});
+}
+function resetQuizForm(){
+  qEditKey=null;["#qQ","#qC0","#qC1","#qC2","#qC3"].forEach(s=>$(s).value="");
+  $("#qAdd").textContent="추가";$("#qEditCancel").style.display="none";
+}
+$("#qEditCancel").addEventListener("click",resetQuizForm);
 $("#qAdd").addEventListener("click",()=>{
   const q=$("#qQ").value.trim();
   const ch=[$("#qC0").value,$("#qC1").value,$("#qC2").value,$("#qC3").value].map(x=>x.trim());
-  if(!q||ch.some(x=>!x)){alert("문제와 보기 4개를 모두 입력하세요");return;}
-  const id="q"+Date.now();
-  DB.ref("quizzes/"+id).set({id,question:q,choices:ch,answer:0,difficulty:$("#qD").value,category:"관리자추가"});
-  ["#qQ","#qC0","#qC1","#qC2","#qC3"].forEach(s=>$(s).value="");
-});
+  if(!q||ch.some(x=>!x)){toast("문제와 보기 4개를 모두 입력하세요",1);return;}
+  const editing=!!qEditKey;
+  const id=qEditKey||("q"+Date.now());
+  const prev=editing?(QCACHE[id]||{}):{};
+  DB.ref("quizzes/"+id).set({id,question:q,choices:ch,answer:0,difficulty:$("#qD").value,category:prev.category||"관리자추가"});
+  resetQuizForm();toast(editing?"문항 수정 저장됨 ✅":"문항 추가됨");});
 $("#qBulkGo").addEventListener("click",()=>{
-  let arr;try{arr=JSON.parse($("#qBulk").value);}catch(e){alert("JSON 형식 오류: "+e.message);return;}
-  if(!Array.isArray(arr)){alert("배열 형식이어야 합니다");return;}
-  const bad=arr.filter(q=>!q.question||!Array.isArray(q.choices)||q.choices.length!==4||typeof q.answer!=="number");
-  if(bad.length){alert(bad.length+"개 문항 형식 오류 — question/choices(4)/answer 필수");return;}
+  let arr;try{arr=JSON.parse($("#qBulk").value);}catch(e){toast("JSON 형식 오류",1);return;}
+  if(!Array.isArray(arr)){toast("배열 형식이어야 합니다",1);return;}
   const up={};arr.forEach((q,i)=>{const id=q.id||("q"+Date.now()+"_"+i);up[id]={...q,id};});
-  DB.ref("quizzes").update(up).then(()=>alert(arr.length+"문항 업로드 완료"));
-});
+  DB.ref("quizzes").update(up).then(()=>toast(arr.length+"문항 업로드 완료"));});
 $("#qExport").addEventListener("click",async()=>{
   const snap=await DB.ref("quizzes").get();
-  const txt=JSON.stringify(Object.values(snap.val()||{}),null,1);
-  await navigator.clipboard.writeText(txt);alert("클립보드에 복사되었습니다");
-});
-$("#qClear").addEventListener("click",()=>{if(confirm("문제은행을 전부 삭제할까요?"))DB.ref("quizzes").remove();});
+  await navigator.clipboard.writeText(JSON.stringify(Object.values(snap.val()||{}),null,1));
+  toast("클립보드에 복사됨");});
+$("#qClear").addEventListener("click",()=>{if(confirm("문제은행 전체 삭제?")){DB.ref("quizzes").remove();toast("전체 삭제됨");}});
+/* ---- 환수 관리 ---- */
+let selId=null;
+function mergedMon(id){
+  const base=BASE_MONSTERS.find(m=>m.id===id)||CUS[id];
+  if(!base)return null;
+  return {...base,...(OV[id]||{}),...(CUS[id]&&!BASE_MONSTERS.find(m=>m.id===id)?CUS[id]:{})};
+}
+function allIds(){
+  const ids=BASE_MONSTERS.map(m=>m.id).concat(Object.keys(CUS).filter(id=>!BASE_MONSTERS.find(m=>m.id===id)));
+  return [...new Set(ids)].sort();
+}
+function renderMonList(){
+  const kw=($("#mSearch")?$("#mSearch").value.trim():"");
+  const ids=allIds();
+  const list=ids.map(mergedMon).filter(Boolean).filter(m=>!kw||m.id.includes(kw)||m.name.includes(kw));
+  $("#mCount").textContent=ids.length+"종"+(Object.keys(OV).length?` · 수정 ${Object.keys(OV).length}건`:"");
+  $("#mList").innerHTML=list.slice(0,200).map(m=>`
+    <div class="mitem"><div class="mi"><b>No.${m.id} ${m.name}</b>
+    <span class="tag">${m.type} ${m.grade}</span>${OV[m.id]?'<span class="tag" style="color:var(--gold)">수정됨</span>':""}
+    ${m.disabled?'<span class="tag" style="color:#ff8a8a">비활성</span>':""}
+    ${CUS[m.id]&&!BASE_MONSTERS.find(b=>b.id===m.id)?'<span class="tag" style="color:#7ee08a">신규</span>':""}</div>
+    <button data-id="${m.id}">편집</button></div>`).join("");
+  $("#mList").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>openEdit(b.dataset.id)));
+}
+function openEdit(id){
+  selId=id;const m=mergedMon(id);if(!m)return;
+  $("#mEditTitle").textContent=`✏️ No.${id} ${m.name} 편집`;
+  $("#mEdit").style.display="block";
+  $("#mName").value=m.name;$("#mType").value=m.type;$("#mGrade").value=m.grade;$("#mHp").value=m.hp;
+  const sk=m.skills||[{},{},{}];
+  $("#sk0n").value=sk[0].name||"";$("#sk0a").value=sk[0].atk||10;
+  $("#sk1n").value=sk[1].name||"";$("#sk1a").value=sk[1].atk||10;
+  $("#sk2n").value=sk[2].name||"";$("#sk2a").value=sk[2].atk||10;
+  $("#mDex").value=m.dex||"";
+  $("#mEvoTo").value=m.evolveTo||"";$("#mEvoWins").value=m.evolveWins||"";
+  $("#mWild").checked=m.wildSpawn!==false;$("#mSafari").checked=!!m.safariOnly;
+}
+$("#mSave").addEventListener("click",async()=>{
+  if(!selId)return;
+  const data={name:$("#mName").value.trim(),type:$("#mType").value,grade:$("#mGrade").value,
+    hp:+$("#mHp").value||30,dex:$("#mDex").value.trim(),
+    skills:[{name:$("#sk0n").value.trim(),rps:"가위",atk:+$("#sk0a").value||10},
+            {name:$("#sk1n").value.trim(),rps:"바위",atk:+$("#sk1a").value||10},
+            {name:$("#sk2n").value.trim(),rps:"보",atk:+$("#sk2a").value||10}],
+    evolveTo:$("#mEvoTo").value.trim()||null,evolveWins:+$("#mEvoWins").value||null,
+    wildSpawn:$("#mWild").checked,safariOnly:$("#mSafari").checked,disabled:false};
+  if(!data.name){toast("이름을 입력하세요",1);return;}
+  const isCustom=CUS[selId]&&!BASE_MONSTERS.find(b=>b.id===selId);
+  await DB.ref((isCustom?"customMonsters/":"monsterOverrides/")+selId).update(data);
+  toast(`No.${selId} 저장 완료 — 전 참가자 즉시 반영`);});
+$("#mRevert").addEventListener("click",async()=>{
+  if(!selId)return;
+  if(BASE_MONSTERS.find(b=>b.id===selId)){await DB.ref("monsterOverrides/"+selId).remove();toast("원본으로 복원됨");openEdit(selId);}
+  else toast("신규 환수는 원본이 없습니다",1);});
+$("#mDelete").addEventListener("click",async()=>{
+  if(!selId)return;
+  if(!confirm(`No.${selId}를 비활성화할까요? (도감/야생/봇에서 제외)`))return;
+  const isCustom=CUS[selId]&&!BASE_MONSTERS.find(b=>b.id===selId);
+  if(isCustom)await DB.ref("customMonsters/"+selId).remove();
+  else await DB.ref("monsterOverrides/"+selId).update({disabled:true});
+  toast(`No.${selId} 비활성화됨`);});
+$("#newGo").addEventListener("click",async()=>{
+  const name=$("#newName").value.trim();if(!name){toast("이름을 입력하세요",1);return;}
+  const maxId=Math.max(151,...allIds().map(x=>+x));
+  const id=String(maxId+1).padStart(3,"0");
+  const grade=$("#newGrade").value,type=$("#newType").value;
+  const hp={C:30,B:50,A:75,S:105}[grade];
+  await DB.ref("customMonsters/"+id).set({id,name,type,grade,hp,category:"일반",
+    skills:[{name:"스킬1",rps:"가위",atk:12},{name:"스킬2",rps:"바위",atk:12},{name:"스킬3",rps:"보",atk:12}],
+    dex:"(도감 설명을 입력하세요)",evolveTo:null,evolveWins:null,wildSpawn:true,safariOnly:false,imageUrl:null});
+  $("#newName").value="";toast(`No.${id} ${name} 추가됨 — 목록에서 편집하세요`);});
+/* ---- 이미지 ---- */
 $("#imgGo").addEventListener("click",async()=>{
   const files=[...$("#imgFiles").files];
-  if(!files.length){alert("파일을 선택하세요");return;}
-  const log=$("#imgLog");log.innerHTML="";let ok=0,fail=0;
+  if(!files.length){toast("파일을 선택하세요",1);return;}
+  const log=$("#imgLog");log.style.display="block";log.innerHTML="";let ok=0,fail=0;
   for(const f of files){
     const m=f.name.match(/^0*(\d{1,3})/);
     if(!m){log.innerHTML+=`<div>⚠️ ${f.name} — 번호 인식 실패</div>`;fail++;continue;}
     const id=String(m[1]).padStart(3,"0");
-    if(+m[1]<1||+m[1]>151){log.innerHTML+=`<div>⚠️ ${f.name} — 범위 밖</div>`;fail++;continue;}
     try{
       const ref=ST.ref("monsters/"+id+"."+(f.name.split(".").pop()||"png"));
       await ref.put(f);
       const url=await ref.getDownloadURL();
       await DB.ref("monsterImages/"+id).set(url);
-      ok++;log.innerHTML+=`<div>✅ No.${id} 업로드 완료</div>`;
+      ok++;log.innerHTML+=`<div>✅ No.${id} 완료</div>`;
     }catch(e){fail++;log.innerHTML+=`<div>❌ No.${id} 실패: ${e.message}</div>`;}
-    log.scrollTop=log.scrollHeight;
-  }
-  alert(`완료: ${ok}건 성공, ${fail}건 실패`);
-});
+    log.scrollTop=log.scrollHeight;}
+  toast(`이미지 업로드: ${ok}건 성공${fail?`, ${fail}건 실패`:""}`);});
+/* ---- 설정 ---- */
+$("#entrySet").addEventListener("click",()=>{
+  const v=$("#entryIn").value.trim();if(!v){toast("코드를 입력하세요",1);return;}
+  DB.ref("game/entryCode").set(v);toast("입장코드 설정: "+v);});
+$("#entryClear").addEventListener("click",()=>{DB.ref("game/entryCode").remove();toast("입장코드 해제 — 자유 입장");});
+$("#rstPlayers").addEventListener("click",async()=>{
+  if(!confirm("참가자 전체를 삭제할까요?"))return;
+  try{await DB.ref("players").remove();await DB.ref("gifts").remove();await DB.ref("removals").remove();
+    toast("참가자 초기화 완료 ✅");}catch(e){toast("실패: "+e.message,1);}});
+$("#rstFeed").addEventListener("click",async()=>{
+  if(!confirm("피드와 채팅을 비울까요? (전 참가자·스크린 화면에서도 즉시 사라집니다)"))return;
+  try{await DB.ref("feed").remove();await DB.ref("chat").remove();
+    await DB.ref("control/clearFeed").set(Date.now());
+    toast("피드·채팅 초기화 완료 ✅ (전원 화면 비움)");}catch(e){toast("실패: "+e.message,1);}});
+$("#rstBattles").addEventListener("click",async()=>{
+  try{await DB.ref("battles").remove();toast("배틀방 청소 완료 ✅");}catch(e){toast("실패: "+e.message,1);}});
+$("#rstAll").addEventListener("click",async()=>{
+  if(!confirm("참가자·피드·채팅·배틀방·게임상태를 모두 초기화합니다. 계속?"))return;
+  try{
+    for(const k of ["players","feed","chat","battles","gifts","removals"])await DB.ref(k).remove();
+    await DB.ref("control/clearFeed").set(Date.now());
+    await DB.ref("game/state").set({phase:"lobby",timerEnd:0});
+    toast("전체 초기화 완료 ✅ (문제은행·환수·이미지는 유지)");}catch(e){toast("실패: "+e.message,1);}});
 </script>
 </body>
 </html>
