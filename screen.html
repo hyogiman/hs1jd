@@ -11,10 +11,12 @@ body{font-family:'Pretendard','Malgun Gothic',sans-serif;background:radial-gradi
 .ticker{position:fixed;top:0;left:0;right:0;height:58px;background:#0a1120ee;border-bottom:1px solid var(--line);
   display:flex;align-items:center;overflow:hidden;z-index:10;}
 .ticker.hide{display:none;}
-.ticker .tk{white-space:nowrap;font-size:1.35rem;font-weight:600;will-change:transform;
-  animation:marq var(--dur,22s) linear infinite;}
-.ticker .tk b{color:var(--gold);}
-@keyframes marq{0%{transform:translateX(100vw)}100%{transform:translateX(-100%)}}
+.ticker .track{position:absolute;left:0;top:0;height:100%;display:flex;align-items:center;}
+.ticker .msg{white-space:nowrap;font-size:1.35rem;font-weight:600;padding:0 3vw;position:absolute;
+  will-change:transform;animation:flow linear forwards;}
+.ticker .msg b{color:var(--gold);}
+.ticker .msg.notice{color:var(--gold);}
+@keyframes flow{from{transform:translateX(100vw)}to{transform:translateX(calc(-100% - 100vw))}}
 .mode{display:none;min-height:100vh;flex-direction:column;align-items:center;justify-content:center;padding:80px 5vw 5vh;}
 .mode.on{display:flex;}
 h1{font-size:3rem;font-weight:800;margin-bottom:.6rem;text-shadow:0 0 30px rgba(242,180,65,.35);}
@@ -39,7 +41,7 @@ h1{font-size:3rem;font-weight:800;margin-bottom:.6rem;text-shadow:0 0 30px rgba(
 </style>
 </head>
 <body>
-<div class="ticker hide" id="ticker"><div class="tk" id="tk"></div></div>
+<div class="ticker hide" id="ticker"><div class="track" id="track"></div></div>
 
 <section class="mode on" id="m-leaderboard">
   <div class="eyebrow">MONSTER EXPEDITION</div>
@@ -96,26 +98,40 @@ DB.ref("players").on("value",s=>{
     ||'<div style="color:var(--sub);font-size:1.3rem;">참가자를 기다리는 중…</div>';
 });
 /* 상단 티커: 이벤트 발생 전엔 숨김, 발생하면 슬라이딩 반복 */
-let feedQ=[];
-DB.ref("feed").limitToLast(6).on("child_added",s=>{
+let tkStarted=false, tkGap=0; const SPEED=180; // px/sec
+function pushTicker(msg,isNotice){
+  const tick=$("#ticker"),track=$("#track");
+  tick.classList.remove("hide");
+  const el=document.createElement("div");
+  el.className="msg"+(isNotice?" notice":"");
+  el.innerHTML=isNotice?("📣 "+msg):msg;
+  track.appendChild(el);
+  // 화면폭+글자폭 만큼 이동하는 시간 = 등속. 직전 메시지와 간격을 둬 겹치지 않게 지연 부여
+  const vw=window.innerWidth;
+  requestAnimationFrame(()=>{
+    const w=el.offsetWidth;
+    const dur=(vw+w+vw)/SPEED; // flow 키프레임 총 이동거리 기준
+    const now=performance.now();
+    const start=Math.max(now, tkGap);
+    const delay=(start-now)/1000;
+    // 다음 메시지는 이 메시지 꼬리가 화면 우측에 진입할 때쯤 시작 (간격 확보)
+    tkGap=start + ((w+vw*0.4)/SPEED)*1000;
+    el.style.animationDuration=dur+"s";
+    el.style.animationDelay=delay+"s";
+    el.addEventListener("animationend",()=>el.remove());
+  });
+}
+DB.ref("feed").limitToLast(1).on("child_added",s=>{
   const v=s.val();if(!v||!v.msg)return;
-  feedQ.push(v.msg.replace(/<[^>]+>/g,""));
-  if(feedQ.length>6)feedQ.shift();
-  renderTicker();
+  // 화면 로드 이전의 과거 메시지는 흘리지 않음(신규 이벤트만)
+  if(!tkStarted){tkStarted=true; if(!v.ts || Date.now()-v.ts>15000)return;}
+  pushTicker(v.msg.replace(/<[^>]+>/g,""), v.type==="notice");
 });
 DB.ref("control/clearFeed").on("value",s=>{
   if(!s.val())return;
-  feedQ=[];document.getElementById("ticker").classList.add("hide");
+  $("#track").innerHTML="";tkGap=0;
+  document.getElementById("ticker").classList.add("hide");
 });
-function renderTicker(){
-  if(!feedQ.length)return;
-  const tick=$("#ticker"),tk=$("#tk");
-  tick.classList.remove("hide");
-  const txt=feedQ.slice().reverse().map(m=>m.startsWith("📣")?`<b>${m}</b>`:m).join("　✦　");
-  tk.innerHTML=txt;
-  tk.style.setProperty("--dur",Math.max(16,txt.length*0.22)+"s");
-  tk.style.animation="none";void tk.offsetWidth;tk.style.animation="";
-}
 /* 치유 코드 — 이 화면이 생성기: PERIOD초마다 새 코드+타임스탬프 기록 */
 let lastWin=-1,curCode=null;
 function renderHealFrame(){

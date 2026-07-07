@@ -269,7 +269,7 @@ document.querySelectorAll(".tabs button").forEach(b=>{
     $("#t-"+b.dataset.t).classList.add("on");});});
 
 let DB=null,ST=null,GAME={},OV={},CUS={},PCACHE={},QCACHE={},PSEL=null,_lastTe=0;
-const PH_INFO={free:["🧪 자유 모드","모든 기능 열림 (테스트용)"],lobby:["⏳ 대기 중","참가자 입장 대기 — 탐험/배틀 잠김"],
+const PH_INFO={free:["🎒 자유 탐험 모드","탐험·배틀·치유 모두 열림 — 자유 플레이 시간"],lobby:["⏳ 대기 중","참가자 입장 대기 — 탐험/배틀 잠김"],
 round1:["🌲 1라운드 — 사파리","탐험·포획 활성 / 배틀·치유 잠김"],round2:["⚔️ 2라운드 — 배틀","배틀·치유 활성 / 탐험 잠김"],
 ended:["🏁 게임 종료","전 기능 잠김 · 참가자 복습 노트 자동 표시"]};
 function boot(){
