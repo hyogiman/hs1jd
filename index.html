@@ -696,7 +696,7 @@ function onMotion(e){
       if(stepIntervals.length>=5){
         const m=stepIntervals.reduce((x,y)=>x+y,0)/stepIntervals.length;
         const sd=Math.sqrt(stepIntervals.reduce((s,v)=>s+(v-m)**2,0)/stepIntervals.length);
-        if(sd/m<0.30 && m>=450) addSteps(1);
+        if(sd/m<0.45 && m>=420) addSteps(1);
       }
       lastStepAt=now;
     } else if(dt>=1500){
@@ -711,7 +711,7 @@ const IDLE_MSGS=["이 일대를 천천히 돌아보자…","바람에 낯선 냄
 "누군가 지켜보는 기분이 든다.","땅에 못 보던 발자국이 찍혀 있다.","바람이 한 방향으로만 분다…"];
 const MID_MSGS=["풀숲이 흔들린 것 같다…","수풀 사이로 무언가 스쳐 지나갔다!","작은 그림자가 나무 뒤로 숨었다.",
 "낮게 그르렁거리는 소리가 들린다…","발자국이 점점 선명해진다!","풀잎 끝이 파르르 떨리고 있다."];
-const NEAR_MSGS=["아주 가까이서 기척이 느껴진다…!","심장이 빨라진다 — 바로 근처다!","숨소리가 들릴 만큼 가깝다…!",
+const NEAR_MSGS=["아주 가까이서 기척이 느껴진다…!","심장이 빨라진다 — 바로 근처다!","숨소리가 들릴 만큼 가깝다…!","어? 뭐가 지나갔는데?"
 "수풀이 크게 출렁였다!!","등 뒤에서 시선이 느껴진다…!","공기가 팽팽하게 긴장됐다…!"];
 let _lastMsg="";
 function pickMsg(arr){let m;do{m=arr[Math.floor(Math.random()*arr.length)];}while(m===_lastMsg&&arr.length>1);_lastMsg=m;return m;}
@@ -719,7 +719,7 @@ function scoutMsg(txt,hot){const el=$("#scoutMsg");el.textContent=txt;el.classLi
 function addSteps(n){
   if(!canExplore()){return;}
   S.stepCount=(S.stepCount||0)+n; S._stepDirty=true;
-  if(!S._stepSaveTm){S._stepSaveTm=setTimeout(()=>{S._stepSaveTm=null;if(S._stepDirty){S._stepDirty=false;savePlayer();}},4000);}
+  if(!S._stepSaveTm){S._stepSaveTm=setTimeout(()=>{S._stepSaveTm=null;if(S._stepDirty){S._stepDirty=false;savePlayer();}},2000);}
   if(Date.now()<S.cooldownUntil)return;
   S.steps+=n;
   const p=S.steps/S.stepGoal, sc=$("#scout");
