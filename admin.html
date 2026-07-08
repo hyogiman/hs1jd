@@ -78,7 +78,7 @@ th{color:var(--sub);font-weight:600;}
       <h3>라운드 전환</h3>
       <div id="phaseBtns">
         <button data-ph="lobby">⏳ 대기</button>
-        <button data-ph="round1">🌲 1라운드 시작</button>
+        <button data-ph="round1">🌲 1라운드(환수 수집) 시작</button>
         <button data-ph="round2">⚔️ 2라운드 시작</button>
         <button data-ph="ended" class="red">🏁 게임 종료</button>
         <button data-ph="free">🧪 자유 모드</button>
@@ -120,18 +120,23 @@ th{color:var(--sub);font-weight:600;}
     </div>
   </div>
   <div class="card">
-    <h3>📣 공지 발송 — 전 참가자 팝업 + 피드 + 스크린 티커</h3>
-    <div class="row2"><input id="noticeIn" placeholder="예: 5분 후 2라운드가 시작됩니다!" style="flex:1;">
-    <button class="gold" id="noticeGo" style="width:120px;">발송</button></div>
+    <h3>📣 공지 발송 — 상단 고정 + 팝업 + 피드</h3>
+    <input id="noticeTitle" placeholder="공지 제목 (예: 2라운드 곧 시작)" style="width:100%;margin-bottom:6px;">
+    <textarea id="noticeBody" placeholder="공지 내용을 입력하세요 (줄바꿈 가능)" style="width:100%;min-height:66px;resize:vertical;"></textarea>
+    <div class="row2" style="margin-top:6px;">
+      <button class="gold" id="noticeGo" style="flex:1;">📌 발송 (상단 고정)</button>
+      <button class="red" id="noticeClear" style="width:120px;">고정 해제</button></div>
+    <div class="stat">최신 공지가 참가자 '실시간 소식' 최상단에 고정됩니다. 제목을 누르면 내용 팝업이 다시 뜹니다. 새 공지를 올리면 교체됩니다.</div>
   </div>
 </div>
 
 <!-- 참가자 -->
 <div class="tabview" id="t-players">
   <div class="card">
-    <h3>👥 참가자 모니터링 <span class="tag" id="pCount"></span></h3>
+    <h3>👥 참가자 모니터링 <span class="tag" id="pCount"></span>
+      <button id="blockAll" style="float:right;margin-top:-4px;">🚫 전체 환수획득 차단</button></h3>
     <div class="stat">이름을 클릭하면 상세 화면(퀴즈 이력 · 환수 부여/회수)이 열립니다.</div>
-    <table><thead><tr><th>이름</th><th>직위</th><th>점수</th><th>승-패</th><th>승률</th><th>퀴즈 정/오</th><th>보유</th><th>기절</th><th>관리</th></tr></thead>
+    <table><thead><tr><th>이름</th><th>직위</th><th>점수</th><th>승-패</th><th>승률</th><th>퀴즈 정/오</th><th>도감</th><th>걸음</th><th>보유</th><th>기절</th><th>관리</th></tr></thead>
     <tbody id="pTable"></tbody></table>
   </div>
 </div>
@@ -236,7 +241,7 @@ th{color:var(--sub);font-weight:600;}
       <h3>🧹 리허설/초기화 도구 <span class="tag">주의</span></h3>
       <button class="red" id="rstPlayers">참가자 전체 삭제</button>
       <button class="red" id="rstFeed">피드·채팅 비우기</button>
-      <button id="rstBattles">배틀방 청소</button>
+      <button id="rstUnique">전설 환수 초기화 (재사용 시)</button>
       <button class="red" id="rstAll">전체 초기화 (리허설 후)</button>
     </div>
   </div>
@@ -284,9 +289,9 @@ document.querySelectorAll(".tabs button").forEach(b=>{
     document.querySelectorAll(".tabview").forEach(x=>x.classList.remove("on"));
     $("#t-"+b.dataset.t).classList.add("on");});});
 
-let DB=null,ST=null,GAME={},OV={},CUS={},PCACHE={},QCACHE={},PSEL=null,_lastTe=0;
+let DB=null,ST=null,GAME={},OV={},CUS={},PCACHE={},QCACHE={},PSEL=null,BLOCKS={},_lastTe=0;
 const PH_INFO={free:["🎒 자유 탐험 모드","탐험·배틀·치유 모두 열림 — 자유 플레이 시간"],lobby:["⏳ 대기 중","참가자 입장 대기 — 탐험/배틀 잠김"],
-round1:["🌲 1라운드 — 사파리","탐험·포획 활성 / 배틀·치유 잠김"],round2:["⚔️ 2라운드 — 배틀","배틀·치유 활성 / 탐험 잠김"],
+round1:["🌲 1라운드 — 환수 수집","탐험·포획 활성 / 배틀·치유 잠김"],round2:["⚔️ 2라운드 — 배틀","배틀·치유 활성 / 탐험 잠김"],
 ended:["🏁 게임 종료","전 기능 잠김 · 참가자 복습 노트 자동 표시"]};
 function boot(){
   if(!FIREBASE_CONFIG.apiKey){toast("FIREBASE_CONFIG를 파일 상단에 입력하세요",1);return;}
@@ -328,8 +333,12 @@ function boot(){
   DB.ref("game/entryCode").on("value",s=>{$("#entryNow").textContent=s.val()||"(설정 안 됨 — 자유 입장)";});
   DB.ref("game/timerPreset").on("value",s=>{PRESET=+s.val()||0;
     $("#timerPresetStat").textContent=PRESET?`⏱ 라운드 시작 시 자동 타이머: ${PRESET}분`:"타이머 미설정 — 라운드 시작 시 타이머 없이 진행됩니다";});
-  DB.ref("players").on("value",s=>{
-    PCACHE=s.val()||{};const rows=Object.entries(PCACHE).map(([uid,p])=>({uid,...p}));
+  DB.ref("players").on("value",s=>{ PCACHE=s.val()||{}; renderPlayers(); });
+  DB.ref("blocks").on("value",s=>{ BLOCKS=s.val()||{}; renderPlayers();
+    const ba=$("#blockAll"); if(ba){const on=!!BLOCKS._all;ba.textContent=on?"🔓 전체 차단 해제":"🚫 전체 환수획득 차단";ba.style.background=on?"#c0343f":"";ba.style.color=on?"#fff":"";}
+  });
+  function renderPlayers(){
+    const rows=Object.entries(PCACHE).map(([uid,p])=>({uid,...p}));
     rows.sort((a,b)=>(b.score||0)-(a.score||0));
     $("#pCount").textContent=rows.length+"명";
     $("#pTable").innerHTML=rows.map(p=>{
@@ -340,15 +349,18 @@ function boot(){
       <td>${p.title||"-"}</td><td>${p.score||0}</td>
       <td>${wl.w}-${wl.l}${wl.d?`-${wl.d}`:""}</td><td>${tot?Math.round(wl.w/tot*100)+"%":"-"}</td>
       <td><span style="color:#7ee08a">${qc}</span> / <span style="color:#ff8a8a">${qh.length-qc}</span></td>
+      <td>${(p.seen||[]).length}</td>
+      <td>${p.steps||0}</td>
       <td>${coll.length}</td>
       <td>${faint?`<span style="color:#ff8a8a">${faint}</span>`:0}</td>
       <td><button data-a="heal" data-u="${p.uid}" data-n="${p.name||""}">전체회복</button>
       <button data-a="p10" data-u="${p.uid}">+10</button><button data-a="m10" data-u="${p.uid}">-10</button>
+      <button data-a="block" data-u="${p.uid}" style="${BLOCKS[p.uid]?"background:#c0343f;color:#fff;":""}">${BLOCKS[p.uid]?"🔓해제":"🚫차단"}</button>
       <button class="red" data-a="del" data-u="${p.uid}" data-n="${p.name||""}">삭제</button></td></tr>`;}).join("")
-      ||'<tr><td colspan="9" class="stat">아직 참가자가 없습니다</td></tr>';
+      ||'<tr><td colspan="11" class="stat">아직 참가자가 없습니다</td></tr>';
     $("#pTable").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>playerAction(b.dataset.a,b.dataset.u,b.dataset.n)));
     $("#pTable").querySelectorAll("[data-view]").forEach(el=>el.addEventListener("click",()=>openPlayer(el.dataset.view)));
-  });
+  }
   DB.ref("quizzes").on("value",s=>{
     const Q=s.val()||{};const arr=Object.entries(Q);
     $("#qCount").textContent=arr.length+"문항"+(arr.length?"":" — 비어있음(앱은 내장 60문항 사용)");
@@ -391,9 +403,12 @@ $("#safariSave").addEventListener("click",()=>{
   const cap=Math.max(1,+$("#safariCap").value||6),balls=Math.max(1,+$("#safariBalls").value||8),dur=Math.max(30,+$("#safariDur").value||180);
   DB.ref("stations/safari").update({cap,balls,dur});toast("사파리 설정 저장됨");});
 $("#noticeGo").addEventListener("click",()=>{
-  const v=$("#noticeIn").value.trim();if(!v)return;
-  DB.ref("feed").push({msg:"📣 "+v,type:"notice",ts:firebase.database.ServerValue.TIMESTAMP});
-  $("#noticeIn").value="";toast("공지 발송 완료 (전원 팝업)");});
+  const t=$("#noticeTitle").value.trim(), b=$("#noticeBody").value.trim();
+  if(!t&&!b){toast("공지 제목 또는 내용을 입력하세요");return;}
+  DB.ref("announce").set({title:t||"진행자 공지",body:b,ts:Date.now()});
+  DB.ref("feed").push({msg:"📣 "+(t||"진행자 공지"),ts:firebase.database.ServerValue.TIMESTAMP});
+  toast("공지 발송 완료 (상단 고정 + 팝업)");});
+$("#noticeClear").addEventListener("click",()=>{DB.ref("announce").remove();toast("고정 공지 해제됨");});
 /* ---- 참가자 ---- */
 async function playerAction(a,uid,nm){
   const ref=DB.ref("players/"+uid);
@@ -404,6 +419,7 @@ async function playerAction(a,uid,nm){
     await ref.child("collection").set(coll);toast(nm+"님 환수 전체 회복 완료 ✅");}
   if(a==="p10"){await ref.child("score").set((p.score||0)+10);toast(nm+"님 +10점");}
   if(a==="m10"){await ref.child("score").set(Math.max(0,(p.score||0)-10));toast(nm+"님 -10점");}
+  if(a==="block"){const cur=!!BLOCKS[uid];await DB.ref("blocks/"+uid).set(!cur);toast((p.name||"참가자")+(cur?"님 환수획득 차단 해제":"님 환수획득 차단 (본인은 모름)"));}
 }
 function monName(id){const m=mergedMon(id);return m?m.name:"No."+id;}
 function monGrade(id){const m=mergedMon(id);return m?m.grade:"?";}
@@ -515,8 +531,15 @@ $("#qBulkGo").addEventListener("click",()=>{
   DB.ref("quizzes").update(up).then(()=>toast(arr.length+"문항 업로드 완료"));});
 $("#qExport").addEventListener("click",async()=>{
   const snap=await DB.ref("quizzes").get();
-  await navigator.clipboard.writeText(JSON.stringify(Object.values(snap.val()||{}),null,1));
-  toast("클립보드에 복사됨");});
+  const arr=Object.values(snap.val()||{}).filter(q=>q&&q.question);
+  const diffLabel={easy:"쉬움",mid:"보통",hard:"어려움"};
+  const text=arr.map((q,i)=>{
+    const choices=(q.choices||[]).map((c,idx)=>`${idx+1}) ${c}`).join("  ");
+    const ans=(q.choices&&typeof q.answer==="number")?`${q.answer+1}) ${q.choices[q.answer]}`:"-";
+    return `${i+1}. [${diffLabel[q.difficulty]||q.difficulty||"-"}${q.category?" · "+q.category:""}]\n문제 : ${q.question}\n선택지 : ${choices}\n정답 : ${ans}`;
+  }).join("\n\n");
+  try{ await navigator.clipboard.writeText(text||"(문항 없음)"); toast(`${arr.length}문항 복사됨 (읽기 쉬운 형식)`); }
+  catch(e){ toast("복사 실패 — 브라우저 권한 확인",1); }});
 $("#qClear").addEventListener("click",()=>{if(confirm("문제은행 전체 삭제?")){DB.ref("quizzes").remove();toast("전체 삭제됨");}});
 /* ---- 환수 관리 ---- */
 let selId=null;
@@ -621,12 +644,19 @@ $("#rstFeed").addEventListener("click",async()=>{
   try{await DB.ref("feed").remove();await DB.ref("chat").remove();
     await DB.ref("control/clearFeed").set(Date.now());
     toast("피드·채팅 초기화 완료 ✅ (전원 화면 비움)");}catch(e){toast("실패: "+e.message,1);}});
-$("#rstBattles").addEventListener("click",async()=>{
-  try{await DB.ref("battles").remove();toast("배틀방 청소 완료 ✅");}catch(e){toast("실패: "+e.message,1);}});
+$("#rstUnique").addEventListener("click",async()=>{
+  if(!confirm("전설(고유) 환수 포획 기록을 초기화할까요? 다시 처음부터 1마리씩 잡을 수 있게 됩니다."))return;
+  try{await DB.ref("uniqueClaims").remove();toast("전설 환수 초기화 완료 ✅");}catch(e){toast("실패: "+e.message,1);}});
+$("#blockAll").addEventListener("click",async()=>{
+  try{const s=await DB.ref("blocks/_all").get();const cur=!!s.val();
+    await DB.ref("blocks/_all").set(!cur);
+    $("#blockAll").textContent=(!cur)?"🔓 전체 차단 해제":"🚫 전체 환수획득 차단";
+    $("#blockAll").style.background=(!cur)?"#c0343f":"";$("#blockAll").style.color=(!cur)?"#fff":"";
+    toast(!cur?"전체 환수획득 차단 (참가자는 모름)":"전체 차단 해제");}catch(e){toast("실패: "+e.message,1);}});
 $("#rstAll").addEventListener("click",async()=>{
   if(!confirm("참가자·피드·채팅·배틀방·게임상태를 모두 초기화합니다. 계속?"))return;
   try{
-    for(const k of ["players","feed","chat","battles","gifts","removals"])await DB.ref(k).remove();
+    for(const k of ["players","feed","chat","battles","gifts","removals","uniqueClaims","blocks","announce"])await DB.ref(k).remove();
     await DB.ref("control/clearFeed").set(Date.now());
     await DB.ref("game/state").set({phase:"lobby",timerEnd:0});
     toast("전체 초기화 완료 ✅ (문제은행·환수·이미지는 유지)");}catch(e){toast("실패: "+e.message,1);}});

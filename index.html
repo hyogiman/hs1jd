@@ -201,6 +201,11 @@ nav button.lockdim{opacity:.35;}
 .sf-exit:active{background:#c0343f;}
 .sf-hint{color:var(--sub);font-size:.75rem;text-align:center;margin-top:10px;line-height:1.6;}
 .badge.safari{border:1.5px solid #6FCFE3;color:#6FCFE3;}
+.pinned-notice{background:linear-gradient(90deg,rgba(240,180,65,.18),rgba(240,180,65,.06));border:1px solid var(--gold);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;display:flex;gap:8px;align-items:center;}
+.pinned-notice:active{filter:brightness(1.15);}
+.pinned-notice .pn-ic{font-size:1.05rem;}
+.pinned-notice .pn-title{font-weight:800;font-size:.9rem;color:var(--gold);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pinned-notice .pn-more{font-size:.68rem;color:var(--sub);white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -237,6 +242,7 @@ nav button.lockdim{opacity:.35;}
       <div class="seg" id="feedSeg" style="margin-bottom:8px;">
         <button data-f="all" class="on">전체</button><button data-f="mine">내 소식</button><button data-f="chat">💬 채팅</button>
       </div>
+      <div id="pinnedNotice" class="pinned-notice" style="display:none;"></div>
       <div class="feed-box" id="feedBox"><div class="feed-item"><time>--:--</time>소식이 여기에 표시됩니다</div></div>
       <div class="chat-row" id="chatRow" style="display:none;">
         <input id="chatIn" maxlength="60" placeholder="하고 싶은 말을 남겨보세요">
@@ -450,7 +456,7 @@ function artHTML(m){
 function hpBarHTML(cur,max){const p=Math.max(0,cur/max*100);return `<div class="hpbar ${p<=30?"low":""}"><i style="width:${p}%"></i></div>`;}
 
 /* ==================== Firebase 계층 ==================== */
-let DB=null, UID=null, PLAYERS={}, HEAL_STATION=null, SAFARI_STATION=null, reviewShown=false, saveTm=null;
+let DB=null, UID=null, PLAYERS={}, HEAL_STATION=null, SAFARI_STATION=null, CLAIMED_UNIQUES={}, reviewShown=false, saveTm=null;
 function fbInit(){
   if(DEMO_MODE){ $("#demoTag").classList.add("on"); S.name="나"; bootUI(); return; }
   firebase.initializeApp(FIREBASE_CONFIG);
@@ -469,6 +475,8 @@ function hydrate(d){
   S.dexSet=new Set(d.dex||[]); S.seenSet=new Set(d.seen||[]);
   S.foughtOpps=new Set(d.fought||[]); S.battleLog=d.blog||[];
   S.quizHistory=d.qhist||[]; S.wl=d.wl||{w:0,l:0,d:0};
+  S.stepCount=d.steps||0;
+  if(typeof d.safariEntries==="number"){window._sfEntriesInit=d.safariEntries;try{SAFARI_ENTRIES=d.safariEntries;}catch(e){}}
 }
 $("#joinBtn").addEventListener("click",async()=>{
   const n=$("#joinName").value.trim(),t=$("#joinTitle").value.trim(),c=$("#joinCode").value.trim();
@@ -487,7 +495,9 @@ function savePlayer(){
   saveTm=setTimeout(()=>{S._lastSaveAt=Date.now();DB.ref("players/"+UID).set({
     name:S.name,title:S.title||"",score:S.score,collection:S.collection,
     dex:[...S.dexSet],seen:[...S.seenSet],fought:[...S.foughtOpps],
-    blog:S.battleLog.slice(0,30),qhist:S.quizHistory.slice(-60),wl:S.wl,upd:firebase.database.ServerValue.TIMESTAMP});},400);
+    blog:S.battleLog.slice(0,30),qhist:S.quizHistory.slice(-60),wl:S.wl,
+    safariEntries:(typeof SAFARI_ENTRIES==="number"?SAFARI_ENTRIES:0),steps:S.stepCount||0,
+    upd:firebase.database.ServerValue.TIMESTAMP});},400);
 }
 function globalFeed(msg){
   addFeed(msg);
@@ -529,7 +539,14 @@ function attachListeners(){
   });
   DB.ref("game/state").on("value",s=>{const v=s.val()||{};applyPhase(v.phase||"free",v.timerEnd||0);});
   DB.ref("players/"+UID).on("value",s=>{
-    if(!s.exists())return;
+    if(!s.exists()){
+      if(S._playerExisted && S.name && !DEMO_MODE){
+        try{alert("진행자에 의해 세션이 초기화되었습니다.\n처음 화면으로 돌아갑니다.");}catch(e){}
+        location.reload();
+      }
+      return;
+    }
+    S._playerExisted=true;
     if(Date.now()-(S._lastSaveAt||0)<1200)return;
     const d=s.val();
     if(typeof d.score==="number"&&d.score!==S.score){S.score=d.score;}
@@ -540,10 +557,36 @@ function attachListeners(){
   DB.ref("quizzes").on("value",s=>{const v=s.val();if(v){const arr=Object.values(v).filter(q=>q&&q.question);if(arr.length>=10)QUIZ_BANK=arr;}});
   DB.ref("stations/heal").on("value",s=>{HEAL_STATION=s.val();renderHealGateNote();});
   DB.ref("stations/safari").on("value",s=>{SAFARI_STATION=s.val();updateNavLocks();if(!SAFARI.active)renderSafariGate();});
+  DB.ref("blocks/_all").on("value",s=>{S.blockedAll=!!s.val();});
+  DB.ref("blocks/"+UID).on("value",s=>{S.blocked=!!s.val();});
+  DB.ref("uniqueClaims").on("value",s=>{CLAIMED_UNIQUES=s.val()||{};if(document.getElementById("dexContent"))renderDex();});
+  DB.ref("announce").on("value",s=>{
+    S.announce=s.val()||null; renderPinnedNotice();
+    if(S.announce&&S.announce.ts&&S.announce.ts>S.joinTs) showNoticeFull(S.announce.title,S.announce.body);
+  });
 }
-const PHASE_LABEL={free:"🎒 자유 탐험 모드 — 탐험·배틀·치유 모두 즐길 수 있어요!",lobby:"⏳ 게임 대기 중 — 곧 시작합니다!",round1:"🌲 1라운드 — 사파리 탐험!",round2:"⚔️ 2라운드 — 상호 배틀!",ended:"🏁 게임 종료 — 수고하셨습니다!"};
+function esc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function renderPinnedNotice(){
+  const el=$("#pinnedNotice"); if(!el)return;
+  if(S.announce&&(S.announce.title||S.announce.body)){
+    el.style.display="flex";
+    el.innerHTML=`<span class="pn-ic">📣</span><span class="pn-title">${esc(S.announce.title||"진행자 공지")}</span><span class="pn-more">눌러서 보기 ▶</span>`;
+    el.onclick=()=>showNoticeFull(S.announce.title,S.announce.body);
+  }else{ el.style.display="none"; }
+}
+function showNoticeFull(title,body){
+  $("#detailSheet").innerHTML=`<div class="grip"></div>
+    <div style="text-align:center;padding:6px 0;"><div style="font-size:2.6rem;">📣</div>
+    <div class="enc-title" style="margin:8px 0 6px;">${esc(title||"진행자 공지")}</div>
+    <div style="font-size:1rem;line-height:1.75;padding:0 6px;white-space:pre-wrap;text-align:left;">${esc(body||"")}</div></div>
+    <button class="btn gold" onclick="document.getElementById('mDetail').classList.remove('on')">확인</button>`;
+  $("#mDetail").classList.add("on");
+  if(navigator.vibrate)navigator.vibrate([120,60,120]);
+}
+function encBlocked(){ return !!(S.blocked||S.blockedAll); }
+const PHASE_LABEL={free:"🎒 자유 탐험 모드 — 탐험·배틀·치유 모두 즐길 수 있어요!",lobby:"⏳ 게임 대기 중 — 곧 시작합니다!",round1:"🌲 1라운드 — 환수 수집!",round2:"⚔️ 2라운드 — 상호 배틀!",ended:"🏁 게임 종료 — 수고하셨습니다!"};
 const PHASE_POPUP={lobby:["⏳ 잠시 대기해주세요","곧 게임이 시작됩니다! 안내에 귀 기울여주세요."],
-round1:["🌲 1라운드 시작!","사파리 탐험이 열렸습니다.<br>걸어다니며 야생 환수를 포획하세요!"],
+round1:["🌲 1라운드 시작!","환수 수집이 시작되었습니다.<br>걸어다니며 야생 환수를 포획하세요!"],
 round2:["⚔️ 2라운드 시작!","상호 배틀과 치유의 샘이 열렸습니다.<br>동료를 만나 배틀 코드를 교환하세요! (탐험 종료)"],
 ended:["🏁 게임 종료!","수고하셨습니다!<br>복습 노트에서 오늘 풀었던 문제를 확인해보세요."]};
 function updateActionLocks(){
@@ -602,7 +645,7 @@ const canBattle=()=>["free","round2"].includes(S.phase);
 function refreshHUDsilent(){
   $("#scorePill").textContent=`🏅 ${S.score}점`;
   $("#homeOwned").textContent=S.collection.length;
-  $("#homeDex").textContent=S.dexSet.size;
+  $("#homeDex").textContent=S.seenSet.size;
   $("#myNameTag").textContent=dispSelf();
   renderRank();
 }
@@ -648,12 +691,12 @@ function onMotion(e){
   const now=Date.now();
   if(motion>3.0 && lastMag<=3.0){
     const dt=now-lastStepAt;
-    if(dt>300 && dt<1500){
-      stepIntervals.push(dt); if(stepIntervals.length>5)stepIntervals.shift();
-      if(stepIntervals.length>=4){
+    if(dt>380 && dt<1500){
+      stepIntervals.push(dt); if(stepIntervals.length>6)stepIntervals.shift();
+      if(stepIntervals.length>=5){
         const m=stepIntervals.reduce((x,y)=>x+y,0)/stepIntervals.length;
         const sd=Math.sqrt(stepIntervals.reduce((s,v)=>s+(v-m)**2,0)/stepIntervals.length);
-        if(sd/m<0.55) addSteps(1);
+        if(sd/m<0.30 && m>=450) addSteps(1);
       }
       lastStepAt=now;
     } else if(dt>=1500){
@@ -675,10 +718,15 @@ function pickMsg(arr){let m;do{m=arr[Math.floor(Math.random()*arr.length)];}whil
 function scoutMsg(txt,hot){const el=$("#scoutMsg");el.textContent=txt;el.classList.toggle("hot",!!hot);}
 function addSteps(n){
   if(!canExplore()){return;}
+  S.stepCount=(S.stepCount||0)+n; S._stepDirty=true;
+  if(!S._stepSaveTm){S._stepSaveTm=setTimeout(()=>{S._stepSaveTm=null;if(S._stepDirty){S._stepDirty=false;savePlayer();}},4000);}
   if(Date.now()<S.cooldownUntil)return;
   S.steps+=n;
   const p=S.steps/S.stepGoal, sc=$("#scout");
-  if(p>=1){triggerEncounter();return;}
+  if(p>=1){
+    if(encBlocked()){ S.steps=0;newGoal();S._zone=0;$("#scout").classList.remove("near");scoutMsg(pickMsg(IDLE_MSGS));return; }
+    triggerEncounter();return;
+  }
   const zone=p>=0.85?2:p>=0.55?1:0;
   if(zone!==S._zone){S._zone=zone;
     if(zone===2){sc.classList.add("near");scoutMsg(pickMsg(NEAR_MSGS),true);}
@@ -743,10 +791,14 @@ function renderQuiz(el,q,meta,onEnd){
 }
 
 /* ==================== 인카운터 ==================== */
+/* 게임당 1마리 제한: 진화로 도달하지 않는(=누구의 진화 결과도 아닌) 직접 등장 S급 (사신수 제외) */
+function isUniqueS(m){ return m && m.grade==="S" && m.wildSpawn && m.category!=="사신수" && !EVO_TARGETS.has(m.id); }
+function uniqueTaken(m){ return isUniqueS(m) && !!(CLAIMED_UNIQUES&&CLAIMED_UNIQUES[m.id]); }
 function rollGrade(){const r=Math.random();let a=0;for(const[g,p]of GRADE_RATE){a+=p;if(r<a)return g;}return"C";}
 function rollMonster(){
   const g=rollGrade();
-  let pool=MONSTERS.filter(m=>!m.disabled&&m.grade===g&&m.wildSpawn&&!m.safariOnly&&!EVO_TARGETS.has(m.id));
+  let pool=MONSTERS.filter(m=>!m.disabled&&m.grade===g&&m.wildSpawn&&!m.safariOnly&&!EVO_TARGETS.has(m.id)&&!uniqueTaken(m));
+  if(!pool.length)pool=MONSTERS.filter(m=>!m.disabled&&m.grade===g&&m.wildSpawn&&!m.safariOnly&&!uniqueTaken(m));
   if(!pool.length)pool=MONSTERS.filter(m=>!m.disabled&&m.grade===g&&m.wildSpawn&&!m.safariOnly);
   return pool[Math.floor(Math.random()*pool.length)];
 }
@@ -802,8 +854,40 @@ function grantMonster(m){
   S.score+=pts;refreshHUD();
   return {pts,isNew};
 }
+async function claimUnique(m){
+  // 게임당 1마리: 성공적으로 선점하면 true. 이미 잡혔으면 false.
+  if(DEMO_MODE||!DB||!UID) return true;
+  try{
+    const ref=DB.ref("uniqueClaims/"+m.id);
+    const res=await ref.transaction(cur=> cur===null ? {uid:UID,name:dispSelf(),mid:m.id,ts:Date.now()} : undefined);
+    return !!(res.committed && res.snapshot.val() && res.snapshot.val().uid===UID);
+  }catch(e){ return false; }
+}
+function renderUniqueTaken(m,sheetSel,closeFn){
+  $(sheetSel).innerHTML=`<div class="grip"></div>
+    <div style="text-align:center;padding:10px 0;">
+    <div style="font-size:2.8rem;">💨</div>
+    <div class="enc-name">아쉽습니다…</div>
+    <div style="font-size:.9rem;color:var(--sub);line-height:1.7;margin-top:6px;">
+    전설의 <b>${m.name}</b>은(는) 이미 다른 원정대원이 포획했습니다.<br>이 환수는 온 세상에 단 한 마리뿐입니다.</div></div>
+    <button class="btn ghost" id="uqClose">확인</button>`;
+  const b=$("#uqClose"); if(b)b.addEventListener("click",closeFn);
+}
 function capture(){
-  const m=ENC.m;const {pts,isNew}=grantMonster(m);
+  const m=ENC.m;
+  if(isUniqueS(m)&&!DEMO_MODE){
+    $("#encSheet").innerHTML=`<div class="grip"></div><div style="text-align:center;padding:24px 0;"><div style="font-size:2.4rem;">🎣</div><div class="enc-name">포획 확정 중…</div></div>`;
+    claimUnique(m).then(ok=>{
+      if(!ok){ S.seenSet.add(m.id); savePlayer(); renderUniqueTaken(m,"#encSheet",closeEnc); return; }
+      doCaptureGrant(m);
+    });
+    return;
+  }
+  doCaptureGrant(m);
+}
+function doCaptureGrant(m){
+  const {pts,isNew}=grantMonster(m);
+  if(isUniqueS(m)&&!DEMO_MODE)globalFeed(`🌟 전설의 <b>${m.name}</b>이(가) <b>${dispSelf()}</b>님에게 포획되어 더 이상 나타나지 않습니다!`);
   addFeed(`<b>${m.name}</b>(${m.grade}) 포획! +${pts}점 ${isNew?"· 도감 신규 등록📖":""}`);
   if(!DEMO_MODE&&(m.grade==="A"||m.grade==="S"))globalFeed(`🎉 <b>${dispSelf()}</b>님이 ${m.grade}등급 <b>${m.name}</b> 포획!`);
   $("#encSheet").innerHTML=`<div class="grip"></div>
@@ -852,7 +936,9 @@ function renderDex(){
         <div class="nm">${owned||seen?m.name:"No."+m.id}</div></div>`;}).join("")}</div>`;
     $("#dexContent").querySelectorAll(".dex-cell").forEach(c=>c.addEventListener("click",()=>openSpecies(c.dataset.id)));
   }else{
-    const list=S.collection.filter(c=>typeMatch(byId(c.monsterId)));
+    const list=S.collection.filter(c=>typeMatch(byId(c.monsterId))).slice().sort((a,b)=>{
+      const A=byId(a.monsterId),B=byId(b.monsterId);
+      return (A?A.id:"999").localeCompare(B?B.id:"999");});
     $("#dexCnt").textContent=`보유 ${list.length}마리`;
     $("#dexContent").innerHTML=list.length?list.map(c=>{
       const m=byId(c.monsterId),tc=TYPE_COLOR[m.type];
@@ -875,7 +961,8 @@ function openSpecies(id){
     $("#detailSheet").innerHTML=`<div class="grip"></div>
       <div class="art-stage" style="--tc:#333"><div class="ph" style="--tc:#2a3450">❔</div></div>
       <div class="enc-name">No.${m.id} ???</div>
-      <div style="text-align:center;color:var(--sub);font-size:.88rem;padding:10px 0;">아직 만나지 못한 환수입니다.</div>`;
+      <div style="text-align:center;color:var(--sub);font-size:.88rem;padding:10px 0;">아직 만나지 못한 환수입니다.</div>
+      <button class="btn ghost" onclick="document.getElementById('mDetail').classList.remove('on')">닫기</button>`;
   }else{
     const tc=TYPE_COLOR[m.type],gc=GRADE_COLOR[m.grade];
     $("#detailSheet").innerHTML=`<div class="grip"></div>
@@ -890,7 +977,8 @@ function openSpecies(id){
       <div class="stat-row"><span class="k">진화</span><span>${m.evolveTo?`${m.evolveWins}승 + 진화퀴즈 → No.${m.evolveTo}`:"최종 형태"}</span></div>
       ${skillListHTML(m)}
       <div class="dex-text">${m.dex}</div>
-      ${!owned?'<div style="text-align:center;color:var(--sub);font-size:.8rem;margin-top:10px;">탐험에서 다시 만나 포획해 보세요!</div>':""}`;
+      ${!owned?'<div style="text-align:center;color:var(--sub);font-size:.8rem;margin-top:10px;">탐험에서 다시 만나 포획해 보세요!</div>':""}
+      <button class="btn ghost" onclick="document.getElementById('mDetail').classList.remove('on')">닫기</button>`;
   }
   $("#mDetail").classList.add("on");
 }
@@ -1394,6 +1482,7 @@ function renderHistory(mode){
         <div>내 답: <span class="my">${h.q.choices[h.myPick]}</span> ${h.correct?"✅":""}</div>
         ${!h.correct?`<div>정답: <span class="ans">${h.q.choices[h.q.answer]}</span></div>`:""}</div>`).join("")
     :`<div style="text-align:center;color:var(--sub);font-size:.85rem;padding:24px 0;">${mode==="wrong"?"틀린 문제가 없습니다 — 완벽해요! 👏":"아직 푼 문제가 없습니다."}</div>`}`;
+  $("#detailSheet").insertAdjacentHTML("beforeend",'<button class="btn ghost" style="margin-top:12px;" onclick="document.getElementById(\'mDetail\').classList.remove(\'on\')">닫기</button>');
   $("#hW").addEventListener("click",()=>renderHistory("wrong"));
   $("#hA").addEventListener("click",()=>renderHistory("all"));
   $("#mDetail").classList.add("on");
@@ -1403,24 +1492,31 @@ function renderHistory(mode){
 /* ==================== 사파리존 (가상 맵) ==================== */
 /* 타일 범례: 0 길 · 1 수풀(인카운터) · 2 물(막힘) · 3 나무(막힘) · 4 바위(막힘) · 5 모래밭(희귀·인카운터) · 6 꽃길 */
 const SF_MAP=[
- [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
- [3,1,1,1,0,0,0,3,3,2,2,2,2,3,1,1,1,1,1,3],
- [3,1,1,1,0,6,0,0,0,2,2,2,2,0,0,1,1,1,1,3],
- [3,1,1,0,0,6,6,0,0,0,2,2,0,0,4,0,0,1,1,3],
- [3,3,0,0,0,0,6,0,3,0,0,0,0,4,4,4,0,0,3,3],
- [3,0,0,4,0,0,0,0,3,3,0,1,1,0,4,0,0,0,0,3],
- [3,0,5,5,5,0,0,0,0,0,0,1,1,0,0,0,6,6,0,3],
- [3,0,5,5,5,5,0,3,0,0,0,0,0,0,3,0,6,6,0,3],
- [3,0,5,5,5,0,0,3,3,0,1,1,0,0,3,0,0,0,0,3],
- [3,0,0,5,0,0,0,0,0,0,1,1,1,0,0,0,4,0,0,3],
- [3,3,0,0,0,4,0,0,1,1,1,1,1,0,0,0,0,0,3,3],
- [3,1,1,0,0,0,0,1,1,1,1,1,0,0,6,6,0,1,1,3],
- [3,1,1,1,0,0,0,0,1,1,1,0,0,0,6,0,0,1,1,3],
- [3,1,1,1,0,0,0,0,0,0,0,0,3,0,0,0,0,1,1,3],
- [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
+ [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+ [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 3],
+ [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 0, 0, 0, 3],
+ [3, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 3, 3, 0, 5, 0, 2, 2, 2, 2, 2, 0, 0, 0, 3],
+ [3, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 5, 5, 5, 5, 2, 2, 1, 0, 0, 0, 3],
+ [3, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 4, 4, 4, 0, 0, 0, 5, 0, 2, 0, 0, 1, 2, 0, 0, 0, 3],
+ [3, 0, 0, 0, 0, 1, 4, 0, 0, 0, 0, 0, 6, 0, 4, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 1, 0, 0, 0, 3],
+ [3, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 6, 6, 6, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 1, 0, 0, 0, 3],
+ [3, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 6, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 3],
+ [3, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 3, 3],
+ [3, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 5, 0, 3],
+ [3, 0, 0, 0, 0, 0, 1, 1, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 1, 0, 5, 5, 5, 3],
+ [3, 0, 0, 0, 3, 0, 1, 0, 6, 0, 4, 4, 0, 1, 0, 0, 0, 0, 0, 0, 4, 0, 0, 1, 1, 0, 0, 5, 0, 3],
+ [3, 0, 0, 0, 0, 0, 0, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 1, 1, 1, 1, 0, 0, 3],
+ [3, 0, 0, 0, 0, 0, 0, 0, 6, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 3],
+ [3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 6, 6, 0, 1, 0, 0, 0, 0, 3],
+ [3, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 6, 0, 4, 0, 0, 1, 0, 3],
+ [3, 0, 0, 1, 1, 1, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 4, 4, 4, 1, 0, 0, 3],
+ [3, 0, 1, 0, 1, 1, 0, 0, 0, 5, 0, 3, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 4, 1, 1, 1, 1, 3],
+ [3, 0, 0, 1, 1, 1, 0, 0, 0, 0, 5, 0, 0, 0, 0, 4, 0, 4, 1, 0, 3, 0, 0, 0, 0, 0, 1, 0, 0, 3],
+ [3, 0, 0, 0, 1, 0, 0, 5, 0, 5, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 3],
+ [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
 ];
 const SF_W=SF_MAP[0].length, SF_H=SF_MAP.length;
-const SF_START={x:5,y:13};
+const SF_START={x:3,y:20};
 const SF_VIEW_C=9, SF_VIEW_R=11;
 const SF_DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
 const SF_WALK=t=>t===0||t===1||t===5||t===6;
@@ -1431,7 +1527,7 @@ const SAFARI={active:false,balls:0,ballsMax:0,tEnd:0,dur:0,
   tx:SF_START.x,ty:SF_START.y,px:SF_START.x,py:SF_START.y,
   moving:false,moveFrom:null,moveTo:null,moveStart:0,facing:"down",held:null,
   raf:null,timerIv:null,caught:0,attempts:0,occInc:false,_enc:null,tile:24,_wp:0,_cssW:360,_cssH:360};
-let SAFARI_ENTRIES=0, SF_CTRL_BOUND=false;
+let SAFARI_ENTRIES=(typeof window!=="undefined"&&typeof window._sfEntriesInit==="number")?window._sfEntriesInit:0, SF_CTRL_BOUND=false;
 
 function safariOpen(){ return DEMO_MODE || !!(SAFARI_STATION&&SAFARI_STATION.open); }
 function sfCfg(){ const s=SAFARI_STATION||{}; return {cap:+s.cap||SF_DEFAULT.cap, balls:+s.balls||SF_DEFAULT.balls, dur:+s.dur||SF_DEFAULT.dur}; }
@@ -1446,8 +1542,9 @@ function safariRollGrade(rare){
 }
 function safariRollMonster(rare){
   const g=safariRollGrade(rare);
-  let pool=MONSTERS.filter(m=>!m.disabled&&m.grade===g&&m.wildSpawn&&m.category!=="사신수");
+  let pool=MONSTERS.filter(m=>!m.disabled&&m.grade===g&&m.wildSpawn&&m.category!=="사신수"&&!uniqueTaken(m));
   if(rare){const so=pool.filter(m=>m.safariOnly); if(so.length&&Math.random()<0.6)pool=so;}
+  if(!pool.length)pool=MONSTERS.filter(m=>!m.disabled&&m.grade===g&&m.wildSpawn&&m.category!=="사신수"&&!uniqueTaken(m));
   if(!pool.length)pool=MONSTERS.filter(m=>!m.disabled&&m.grade===g&&m.wildSpawn&&m.category!=="사신수");
   return pool[Math.floor(Math.random()*pool.length)];
 }
@@ -1519,7 +1616,7 @@ function safariRequestEntry(){
 
 /* ---- 세션 ---- */
 function safariStart(cfg){
-  SAFARI.active=true; SAFARI_ENTRIES++;
+  SAFARI.active=true; SAFARI_ENTRIES++; savePlayer();
   SAFARI.balls=cfg.balls; SAFARI.ballsMax=cfg.balls; SAFARI.dur=cfg.dur;
   SAFARI.tEnd=Date.now()+cfg.dur*1000; SAFARI.caught=0; SAFARI.attempts=0;
   SAFARI.tx=SF_START.x; SAFARI.ty=SF_START.y; SAFARI.px=SF_START.x; SAFARI.py=SF_START.y;
@@ -1669,9 +1766,9 @@ function safariStep(dir){
 }
 function safariArrive(){
   const t=SF_MAP[SAFARI.ty][SAFARI.tx];
-  if((t===1||t===5)&&!SAFARI._enc){
+  if((t===1||t===5)&&!SAFARI._enc&&!encBlocked()){
     const rare=(t===5);
-    if(Math.random()<(rare?0.34:0.24)){ safariEncounter(rare); return; }
+    if(Math.random()<(rare?0.30:0.18)){ safariEncounter(rare); return; }
   }
   if(SAFARI.held&&!SAFARI._enc)safariStep(SAFARI.held);
 }
@@ -1752,8 +1849,21 @@ function safariEncFail(){
   $("#sfEncClose").addEventListener("click",safariCloseEnc);
 }
 function safariCapture(){
-  const m=SAFARI._enc.m; const g=grantMonster(m); const pts=g.pts, isNew=g.isNew;
+  const m=SAFARI._enc.m;
+  if(isUniqueS(m)&&!DEMO_MODE){
+    $("#encSheet").innerHTML=`<div class="grip"></div><div style="text-align:center;padding:24px 0;"><div style="font-size:2.4rem;">🎣</div><div class="enc-name">포획 확정 중…</div></div>`;
+    claimUnique(m).then(ok=>{
+      if(!ok){ S.seenSet.add(m.id); SAFARI.balls++; safariUpdHud(); savePlayer(); renderUniqueTaken(m,"#encSheet",safariCloseEnc); return; }
+      doSafariGrant(m);
+    });
+    return;
+  }
+  doSafariGrant(m);
+}
+function doSafariGrant(m){
+  const g=grantMonster(m); const pts=g.pts, isNew=g.isNew;
   SAFARI.caught++;
+  if(isUniqueS(m)&&!DEMO_MODE)globalFeed(`🌟 전설의 <b>${m.name}</b>이(가) <b>${dispSelf()}</b>님에게 포획되어 더 이상 나타나지 않습니다!`);
   addFeed(`🏕️ 사파리존에서 <b>${m.name}</b>(${m.grade}) 포획! +${pts}점 ${isNew?"· 도감 신규📖":""}`);
   if(!DEMO_MODE&&(m.grade==="A"||m.grade==="S"))globalFeed(`🎉 <b>${dispSelf()}</b>님이 사파리존에서 ${m.grade}등급 <b>${m.name}</b> 포획!`);
   savePlayer();
@@ -1774,13 +1884,33 @@ function safariCloseEnc(){
   if(SAFARI.active&&SAFARI.balls<=0){ safariExit("balls"); }
 }
 
+/* ==================== 뒤로가기(모달) 관리 ==================== */
+(function(){
+  const ids=["mEnc","mDetail","mBattle"];
+  const modals=ids.map(id=>document.getElementById(id)).filter(Boolean);
+  function anyOpen(){return modals.some(m=>m.classList.contains("on"));}
+  const obs=new MutationObserver(()=>{
+    if(anyOpen() && !(history.state&&history.state.modal)){ history.pushState({modal:true},""); }
+  });
+  modals.forEach(m=>obs.observe(m,{attributes:true,attributeFilter:["class"]}));
+  window.addEventListener("popstate",()=>{
+    const open=modals.filter(m=>m.classList.contains("on"));
+    if(open.length){
+      const top=open[open.length-1];
+      if(top.id==="mEnc"){ if(typeof ENC!=="undefined"&&ENC){ENC=null;} if(typeof SAFARI!=="undefined"&&SAFARI){SAFARI._enc=null;} }
+      top.classList.remove("on");
+      if(anyOpen()) history.pushState({modal:true},"");
+    }
+  });
+})();
+
 /* ==================== 부트 ==================== */
 function bootUI(){
   buildDexSide();renderDex();refreshHUD();renderBattleLog();renderBattleButtons();renderHealGateNote();updateNavLocks();updateActionLocks();
   if(!DEMO_MODE)$("#btnSim").style.display="none"; /* 실전에선 테스트 버튼 자동 숨김 */
   $("#chatGo").addEventListener("click",sendChat);
   $("#chatIn").addEventListener("keydown",e=>{if(e.key==="Enter")sendChat();});
-  addFeed(DEMO_MODE?"환수 원정대 v0.7 (로컬 데모) — 탐험을 시작하세요!":`<b>${dispSelf()}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
+  addFeed(DEMO_MODE?"환수 원정대 v0.8 (로컬 데모) — 탐험을 시작하세요!":`<b>${dispSelf()}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
 }
 fbInit();
 </script>
