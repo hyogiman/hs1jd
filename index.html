@@ -171,6 +171,36 @@ nav button.on{color:var(--ink);}nav button.on .ic{filter:none;transform:translat
 .chat-item b{color:var(--gold);font-weight:700;margin-right:6px;}
 .chat-item time{color:var(--sub);font-size:.68rem;float:right;}
 nav button.lockdim{opacity:.35;}
+/* ==================== 사파리존 ==================== */
+#v-safari .safari-gate{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 16px;text-align:center;}
+#v-safari .safari-gate h3{font-size:1.15rem;margin-bottom:4px;}
+#v-safari .safari-gate .sub{color:var(--sub);font-size:.8rem;line-height:1.6;margin-bottom:14px;}
+#v-safari .sf-status{display:flex;gap:8px;margin:12px 0;}
+#v-safari .sf-status .pill{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 6px;}
+#v-safari .sf-status .pill b{display:block;font-size:1.05rem;color:var(--gold);}
+#v-safari .sf-status .pill span{font-size:.66rem;color:var(--sub);}
+#v-safari .sf-closed{color:#ff8f8f;font-weight:700;font-size:.9rem;margin:8px 0;}
+#v-safari .sf-open{color:#7CE38B;font-weight:700;font-size:.9rem;margin:8px 0;}
+.safari-stage{position:relative;width:100%;border-radius:14px;overflow:hidden;border:2px solid #23407a;background:#0a1120;box-shadow:0 8px 26px rgba(0,0,0,.45);touch-action:none;}
+.safari-stage canvas{display:block;width:100%;height:auto;image-rendering:auto;}
+.sf-hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:linear-gradient(180deg,rgba(8,14,28,.85),transparent);pointer-events:none;z-index:3;}
+.sf-hud .chip{background:rgba(16,24,44,.82);border:1px solid var(--line);border-radius:99px;padding:4px 11px;font-size:.8rem;font-weight:700;}
+.sf-hud .chip.ball{color:#ff9b6b;}
+.sf-hud .chip.time{color:#8fd4ff;}
+.sf-hud .chip.warn{color:#ff6b6b;animation:sfblink .8s steps(1) infinite;}
+@keyframes sfblink{50%{opacity:.35;}}
+.sf-dpad{position:absolute;left:12px;bottom:12px;width:132px;height:132px;z-index:4;user-select:none;}
+.sf-dpad button{position:absolute;width:44px;height:44px;border:none;border-radius:12px;background:rgba(30,44,74,.9);color:#dbe6fb;font-size:1.2rem;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4);}
+.sf-dpad button:active{background:var(--gold);color:#1a1305;}
+.sf-dpad .up{left:44px;top:0;}
+.sf-dpad .down{left:44px;top:88px;}
+.sf-dpad .left{left:0;top:44px;}
+.sf-dpad .right{left:88px;top:44px;}
+.sf-dpad .mid{left:44px;top:44px;width:44px;height:44px;background:rgba(20,30,54,.6);border-radius:10px;}
+.sf-exit{position:absolute;right:12px;bottom:14px;z-index:4;background:rgba(120,32,40,.9);color:#ffd9d9;border:1px solid #a04048;border-radius:12px;padding:10px 14px;font-weight:700;font-size:.85rem;}
+.sf-exit:active{background:#c0343f;}
+.sf-hint{color:var(--sub);font-size:.75rem;text-align:center;margin-top:10px;line-height:1.6;}
+.badge.safari{border:1.5px solid #6FCFE3;color:#6FCFE3;}
 </style>
 </head>
 <body>
@@ -256,6 +286,28 @@ nav button.lockdim{opacity:.35;}
     <button class="btn ghost sm" id="btnHistory">📝 복습 노트 (푼 문제 다시보기)</button>
     <div id="healList"></div>
   </section>
+
+  <section class="view" id="v-safari">
+    <div id="safariGate"></div>
+    <div id="safariPlay" style="display:none;">
+      <div class="safari-stage" id="safariStage">
+        <div class="sf-hud">
+          <div class="chip ball" id="sfBalls">🎯 0</div>
+          <div class="chip time" id="sfTime">⏱ 0:00</div>
+        </div>
+        <canvas id="safariCanvas"></canvas>
+        <div class="sf-dpad">
+          <button class="up" data-dir="up">▲</button>
+          <button class="left" data-dir="left">◀</button>
+          <div class="mid"></div>
+          <button class="right" data-dir="right">▶</button>
+          <button class="down" data-dir="down">▼</button>
+        </div>
+        <button class="sf-exit" id="sfExit">나가기</button>
+      </div>
+      <div class="sf-hint">방향키(또는 화면 스와이프)로 이동하세요. <b>수풀·모래밭</b>을 걸으면 야생 환수가 나타납니다.<br>사파리존에서만 만날 수 있는 희귀 환수가 숨어 있어요!</div>
+    </div>
+  </section>
 </main>
 
 <nav>
@@ -263,6 +315,7 @@ nav button.lockdim{opacity:.35;}
   <button data-v="explore"><span class="ic">🧭</span>탐험</button>
   <button data-v="dex"><span class="ic">📖</span>도감</button>
   <button data-v="battle"><span class="ic">⚔️</span>배틀</button>
+  <button data-v="safari"><span class="ic">🏕️</span>사파리</button>
   <button data-v="heal"><span class="ic">💧</span>치유</button>
 </nav>
 
@@ -397,7 +450,7 @@ function artHTML(m){
 function hpBarHTML(cur,max){const p=Math.max(0,cur/max*100);return `<div class="hpbar ${p<=30?"low":""}"><i style="width:${p}%"></i></div>`;}
 
 /* ==================== Firebase 계층 ==================== */
-let DB=null, UID=null, PLAYERS={}, HEAL_STATION=null, reviewShown=false, saveTm=null;
+let DB=null, UID=null, PLAYERS={}, HEAL_STATION=null, SAFARI_STATION=null, reviewShown=false, saveTm=null;
 function fbInit(){
   if(DEMO_MODE){ $("#demoTag").classList.add("on"); S.name="나"; bootUI(); return; }
   firebase.initializeApp(FIREBASE_CONFIG);
@@ -486,6 +539,7 @@ function attachListeners(){
   DB.ref("monsterImages").on("value",s=>{const v=s.val()||{};let ch=false;for(const id in v){const m=byId(id);if(m&&m.imageUrl!==v[id]){m.imageUrl=v[id];ch=true;}}if(ch)renderDex();});
   DB.ref("quizzes").on("value",s=>{const v=s.val();if(v){const arr=Object.values(v).filter(q=>q&&q.question);if(arr.length>=10)QUIZ_BANK=arr;}});
   DB.ref("stations/heal").on("value",s=>{HEAL_STATION=s.val();renderHealGateNote();});
+  DB.ref("stations/safari").on("value",s=>{SAFARI_STATION=s.val();updateNavLocks();if(!SAFARI.active)renderSafariGate();});
 }
 const PHASE_LABEL={free:"🎒 자유 탐험 모드 — 탐험·배틀·치유 모두 즐길 수 있어요!",lobby:"⏳ 게임 대기 중 — 곧 시작합니다!",round1:"🌲 1라운드 — 사파리 탐험!",round2:"⚔️ 2라운드 — 상호 배틀!",ended:"🏁 게임 종료 — 수고하셨습니다!"};
 const PHASE_POPUP={lobby:["⏳ 잠시 대기해주세요","곧 게임이 시작됩니다! 안내에 귀 기울여주세요."],
@@ -504,6 +558,7 @@ function updateNavLocks(){
     const v=b.dataset.v;let lock=false;
     if(v==="explore")lock=!canExplore();
     if(v==="battle"||v==="heal")lock=!canBattle();
+    if(v==="safari")lock=!canExplore()||!safariOpen();
     b.classList.toggle("lockdim",lock);});
 }
 function applyPhase(ph,timerEnd){
@@ -579,6 +634,7 @@ document.querySelectorAll("nav button").forEach(b=>{
     $("#v-"+b.dataset.v).classList.add("on");
     if(b.dataset.v==="heal")renderHeal();
     if(b.dataset.v==="dex")renderDex();
+    if(b.dataset.v==="safari")onSafariTab();
   });
 });
 
@@ -739,11 +795,15 @@ function encFail(){
   scoutMsg("환수들이 놀라 숨어버렸다… 잠시 후 다시 나타날 것이다.");
   setTimeout(()=>{toast("숲이 다시 고요해졌다 — 탐험을 계속하세요!");scoutMsg("이 일대를 천천히 돌아보자…");},60000);
 }
-function capture(){
-  const m=ENC.m,pts=GRADE_PTS[m.grade];
+function grantMonster(m){
+  const pts=GRADE_PTS[m.grade];
   S.collection.push({uid:Date.now()+"-"+Math.random().toString(36).slice(2,6),monsterId:m.id,hp:m.hp,wins:0});
   const isNew=!S.dexSet.has(m.id);S.dexSet.add(m.id);S.seenSet.add(m.id);
   S.score+=pts;refreshHUD();
+  return {pts,isNew};
+}
+function capture(){
+  const m=ENC.m;const {pts,isNew}=grantMonster(m);
   addFeed(`<b>${m.name}</b>(${m.grade}) 포획! +${pts}점 ${isNew?"· 도감 신규 등록📖":""}`);
   if(!DEMO_MODE&&(m.grade==="A"||m.grade==="S"))globalFeed(`🎉 <b>${dispSelf()}</b>님이 ${m.grade}등급 <b>${m.name}</b> 포획!`);
   $("#encSheet").innerHTML=`<div class="grip"></div>
@@ -824,7 +884,8 @@ function openSpecies(id){
       <div class="badges"><span class="badge type" style="--tc:${tc}">${TYPE_EMOJI[m.type]} ${m.type}</span>
       <span class="badge grade" style="--gc:${gc}">${m.grade}등급</span>
       ${!owned?'<span class="badge" style="border:1.5px solid var(--sub);color:var(--sub)">👁 목격 · 미포획</span>':""}
-      ${m.category==="사신수"?'<span class="badge" style="border:1.5px solid var(--gold);color:var(--gold)">사신수</span>':""}</div>
+      ${m.category==="사신수"?'<span class="badge" style="border:1.5px solid var(--gold);color:var(--gold)">사신수</span>':""}
+      ${m.safariOnly?'<span class="badge safari">🏕️ 사파리존에서만 목격됨</span>':""}</div>
       <div class="stat-row"><span class="k">최대 HP</span><span>${m.hp}</span></div>
       <div class="stat-row"><span class="k">진화</span><span>${m.evolveTo?`${m.evolveWins}승 + 진화퀴즈 → No.${m.evolveTo}`:"최종 형태"}</span></div>
       ${skillListHTML(m)}
@@ -1338,13 +1399,388 @@ function renderHistory(mode){
   $("#mDetail").classList.add("on");
 }
 
+
+/* ==================== 사파리존 (가상 맵) ==================== */
+/* 타일 범례: 0 길 · 1 수풀(인카운터) · 2 물(막힘) · 3 나무(막힘) · 4 바위(막힘) · 5 모래밭(희귀·인카운터) · 6 꽃길 */
+const SF_MAP=[
+ [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+ [3,1,1,1,0,0,0,3,3,2,2,2,2,3,1,1,1,1,1,3],
+ [3,1,1,1,0,6,0,0,0,2,2,2,2,0,0,1,1,1,1,3],
+ [3,1,1,0,0,6,6,0,0,0,2,2,0,0,4,0,0,1,1,3],
+ [3,3,0,0,0,0,6,0,3,0,0,0,0,4,4,4,0,0,3,3],
+ [3,0,0,4,0,0,0,0,3,3,0,1,1,0,4,0,0,0,0,3],
+ [3,0,5,5,5,0,0,0,0,0,0,1,1,0,0,0,6,6,0,3],
+ [3,0,5,5,5,5,0,3,0,0,0,0,0,0,3,0,6,6,0,3],
+ [3,0,5,5,5,0,0,3,3,0,1,1,0,0,3,0,0,0,0,3],
+ [3,0,0,5,0,0,0,0,0,0,1,1,1,0,0,0,4,0,0,3],
+ [3,3,0,0,0,4,0,0,1,1,1,1,1,0,0,0,0,0,3,3],
+ [3,1,1,0,0,0,0,1,1,1,1,1,0,0,6,6,0,1,1,3],
+ [3,1,1,1,0,0,0,0,1,1,1,0,0,0,6,0,0,1,1,3],
+ [3,1,1,1,0,0,0,0,0,0,0,0,3,0,0,0,0,1,1,3],
+ [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
+];
+const SF_W=SF_MAP[0].length, SF_H=SF_MAP.length;
+const SF_START={x:5,y:13};
+const SF_VIEW_C=9, SF_VIEW_R=11;
+const SF_DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+const SF_WALK=t=>t===0||t===1||t===5||t===6;
+const SF_ENTRY_LIMIT=2;
+const SF_DEFAULT={cap:6,balls:8,dur:180};
+
+const SAFARI={active:false,balls:0,ballsMax:0,tEnd:0,dur:0,
+  tx:SF_START.x,ty:SF_START.y,px:SF_START.x,py:SF_START.y,
+  moving:false,moveFrom:null,moveTo:null,moveStart:0,facing:"down",held:null,
+  raf:null,timerIv:null,caught:0,attempts:0,occInc:false,_enc:null,tile:24,_wp:0,_cssW:360,_cssH:360};
+let SAFARI_ENTRIES=0, SF_CTRL_BOUND=false;
+
+function safariOpen(){ return DEMO_MODE || !!(SAFARI_STATION&&SAFARI_STATION.open); }
+function sfCfg(){ const s=SAFARI_STATION||{}; return {cap:+s.cap||SF_DEFAULT.cap, balls:+s.balls||SF_DEFAULT.balls, dur:+s.dur||SF_DEFAULT.dur}; }
+function sfOccCount(){ const s=SAFARI_STATION||{}; return s.occ?Object.keys(s.occ).length:0; }
+function sfRoundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+/* ---- 등장 확률 (사파리: B~A 2배 · 모래밭은 희귀↑) ---- */
+function safariRollGrade(rare){
+  const table = rare ? [["C",0.14],["B",0.30],["A",0.34],["S",0.22]]
+                     : [["C",0.38],["B",0.34],["A",0.20],["S",0.08]];
+  const r=Math.random();let a=0;for(const[g,p]of table){a+=p;if(r<a)return g;}return "C";
+}
+function safariRollMonster(rare){
+  const g=safariRollGrade(rare);
+  let pool=MONSTERS.filter(m=>!m.disabled&&m.grade===g&&m.wildSpawn&&m.category!=="사신수");
+  if(rare){const so=pool.filter(m=>m.safariOnly); if(so.length&&Math.random()<0.6)pool=so;}
+  if(!pool.length)pool=MONSTERS.filter(m=>!m.disabled&&m.grade===g&&m.wildSpawn&&m.category!=="사신수");
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+/* ---- 입장 게이트 ---- */
+function onSafariTab(){
+  if(SAFARI.active){ $("#safariGate").style.display="none"; $("#safariPlay").style.display="block"; safariResize(); safariEnsureLoop(); }
+  else{ $("#safariPlay").style.display="none"; $("#safariGate").style.display="block"; renderSafariGate(); }
+}
+function renderSafariGate(){
+  const g=$("#safariGate"); if(!g) return;
+  const cfg=sfCfg(), open=safariOpen(), left=Math.max(0,SF_ENTRY_LIMIT-SAFARI_ENTRIES);
+  g.innerHTML=`<div class="safari-gate">
+    <h3>🏕️ 사파리존</h3>
+    <div class="sub">제한된 시간과 사파리볼로 최대한 많은 환수를 잡으세요.<br>이곳에서만 만날 수 있는 <b style="color:#6FCFE3">희귀 환수</b>가 숨어 있습니다.</div>
+    <div class="${open?"sf-open":"sf-closed"}">${open?"🟢 사파리존이 열려 있습니다":"⛔ 아직 열리지 않았습니다 (진행자 오픈 대기)"}</div>
+    <div class="sf-status">
+      <div class="pill"><b>${cfg.dur}초</b><span>체류 시간</span></div>
+      <div class="pill"><b>${cfg.balls}개</b><span>사파리볼</span></div>
+      <div class="pill"><b>${sfOccCount()}/${cfg.cap}</b><span>현재 입장</span></div>
+      <div class="pill"><b>${left}회</b><span>남은 입장</span></div>
+    </div>
+    <button class="btn gold" id="sfEnterBtn" ${(!open||left<=0||!canExplore())?"disabled":""}>🥾 입장하기</button>
+    <div class="sf-hint">입장 시 간단한 퀴즈 1문제를 통과해야 합니다.${!canExplore()?"<br>지금은 사파리 탐험 시간이 아닙니다.":""}</div>
+  </div>`;
+  const b=$("#sfEnterBtn"); if(b)b.addEventListener("click",safariRequestEntry);
+}
+
+async function safariTryOccupy(cap){
+  if(DEMO_MODE||!DB||!UID) return true;
+  try{
+    const ref=DB.ref("stations/safari/occ/"+UID);
+    await ref.set(firebase.database.ServerValue.TIMESTAMP);
+    ref.onDisconnect().remove();
+    const snap=await DB.ref("stations/safari/occ").get();
+    const n=snap.exists()?Object.keys(snap.val()).length:1;
+    if(n>cap){ await ref.remove(); return false; }
+    SAFARI.occInc=true; return true;
+  }catch(e){ return true; }
+}
+function safariRelease(){
+  if(SAFARI.occInc&&DB&&UID){ try{DB.ref("stations/safari/occ/"+UID).onDisconnect().cancel();DB.ref("stations/safari/occ/"+UID).remove();}catch(e){} }
+  SAFARI.occInc=false;
+}
+
+function safariRequestEntry(){
+  if(!canExplore()){toast("지금은 사파리존 입장 시간이 아닙니다");return;}
+  if(!safariOpen()){toast("사파리존이 아직 열리지 않았습니다");return;}
+  if(SF_ENTRY_LIMIT-SAFARI_ENTRIES<=0){toast("입장 가능 횟수를 모두 사용했습니다");return;}
+  const cfg=sfCfg();
+  if(!DEMO_MODE && sfOccCount()>=cfg.cap){toast("사파리존이 만원입니다 — 잠시 후 다시 시도하세요");return;}
+  const q=pickQuiz("easy");
+  $("#detailSheet").innerHTML=`<div class="grip"></div>
+    <div class="enc-title">🏕️ 사파리존 입장 시험</div>
+    <div style="font-size:.8rem;color:var(--sub);text-align:center;margin-bottom:6px;">한 문제를 맞히면 입장합니다</div>
+    <div id="sfEntryBox"></div>`;
+  renderQuiz($("#sfEntryBox"),q,{step:"입장 시험",ctx:"사파리 입장",mon:""},async ok=>{
+    if(!ok){
+      $("#detailSheet").innerHTML=`<div class="grip"></div><div style="text-align:center;padding:16px 0;"><div style="font-size:2.4rem;">🚧</div><div class="enc-name">입장 실패</div><div style="font-size:.83rem;color:var(--sub);margin-top:4px;">다른 문제로 다시 도전해 보세요!</div></div><button class="btn gold" onclick="document.getElementById('mDetail').classList.remove('on')">확인</button>`;
+      return;
+    }
+    const okOcc=await safariTryOccupy(cfg.cap);
+    if(!okOcc){toast("사파리존이 만원입니다");document.getElementById("mDetail").classList.remove("on");return;}
+    document.getElementById("mDetail").classList.remove("on");
+    safariStart(cfg);
+  });
+  $("#mDetail").classList.add("on");
+}
+
+/* ---- 세션 ---- */
+function safariStart(cfg){
+  SAFARI.active=true; SAFARI_ENTRIES++;
+  SAFARI.balls=cfg.balls; SAFARI.ballsMax=cfg.balls; SAFARI.dur=cfg.dur;
+  SAFARI.tEnd=Date.now()+cfg.dur*1000; SAFARI.caught=0; SAFARI.attempts=0;
+  SAFARI.tx=SF_START.x; SAFARI.ty=SF_START.y; SAFARI.px=SF_START.x; SAFARI.py=SF_START.y;
+  SAFARI.moving=false; SAFARI.held=null; SAFARI.facing="down"; SAFARI._enc=null;
+  $("#safariGate").style.display="none"; $("#safariPlay").style.display="block";
+  safariResize(); safariBindControls(); safariUpdHud();
+  addFeed("🏕️ 사파리존에 입장했습니다!");
+  clearInterval(SAFARI.timerIv);
+  SAFARI.timerIv=setInterval(()=>{
+    if(!SAFARI.active){clearInterval(SAFARI.timerIv);return;}
+    if(!canExplore()||!safariOpen()){safariExit("closed");return;}
+    const r=Math.max(0,Math.floor((SAFARI.tEnd-Date.now())/1000));
+    safariUpdHud();
+    if(r<=0)safariExit("time");
+  },500);
+  safariEnsureLoop();
+}
+function safariExit(reason){
+  if(!SAFARI.active)return;
+  SAFARI.active=false;
+  clearInterval(SAFARI.timerIv);
+  if(SAFARI.raf){cancelAnimationFrame(SAFARI.raf);SAFARI.raf=null;}
+  SAFARI.held=null;SAFARI.moving=false;SAFARI._enc=null;
+  $("#mEnc").classList.remove("on");
+  safariRelease(); savePlayer();
+  const rsn=reason==="time"?"시간이 종료되었습니다":reason==="balls"?"사파리볼을 모두 사용했습니다":reason==="closed"?"사파리존이 종료되었습니다":"사파리존에서 나왔습니다";
+  const left=Math.max(0,SF_ENTRY_LIMIT-SAFARI_ENTRIES);
+  $("#detailSheet").innerHTML=`<div class="grip"></div>
+    <div style="text-align:center;padding:8px 0;">
+    <div style="font-size:2.6rem;">🏕️</div>
+    <div class="enc-name">${rsn}</div>
+    <div style="margin:12px 0;font-size:.95rem;">이번 탐험에서 <b style="color:var(--gold)">${SAFARI.caught}마리</b> 포획!<br>
+    <span style="color:var(--sub);font-size:.82rem;">사파리볼 ${SAFARI.attempts}개 사용 · 남은 입장 ${left}회</span></div></div>
+    <button class="btn gold" onclick="document.getElementById('mDetail').classList.remove('on')">확인</button>`;
+  $("#mDetail").classList.add("on");
+  addFeed(`🏕️ 사파리존 종료 — ${SAFARI.caught}마리 포획`);
+  $("#safariPlay").style.display="none"; $("#safariGate").style.display="block"; renderSafariGate();
+}
+
+/* ---- 렌더링 ---- */
+function safariResize(){
+  const stage=$("#safariStage"), cv=$("#safariCanvas"); if(!stage||!cv)return;
+  const cssW=stage.clientWidth||360;
+  const tile=Math.max(20,Math.floor(cssW/SF_VIEW_C));
+  SAFARI.tile=tile;
+  const cssH=tile*SF_VIEW_R;
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.style.height=cssH+"px";
+  cv.width=Math.round(cssW*dpr); cv.height=Math.round(cssH*dpr);
+  const ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+  SAFARI._cssW=cssW; SAFARI._cssH=cssH;
+}
+function safariEnsureLoop(){ if(SAFARI.raf)cancelAnimationFrame(SAFARI.raf); SAFARI.raf=requestAnimationFrame(safariLoop); }
+function safariLoop(ts){
+  if(!SAFARI.active){SAFARI.raf=null;return;}
+  SAFARI._wp=ts/380;
+  if(SAFARI.moving){
+    const p=Math.min(1,(ts-SAFARI.moveStart)/130);
+    SAFARI.px=SAFARI.moveFrom.px+(SAFARI.moveTo.px-SAFARI.moveFrom.px)*p;
+    SAFARI.py=SAFARI.moveFrom.py+(SAFARI.moveTo.py-SAFARI.moveFrom.py)*p;
+    if(p>=1){SAFARI.moving=false;SAFARI.px=SAFARI.moveTo.px;SAFARI.py=SAFARI.moveTo.py;safariArrive();}
+  }
+  safariDraw();
+  SAFARI.raf=requestAnimationFrame(safariLoop);
+}
+function safariDraw(){
+  const cv=$("#safariCanvas"); if(!cv)return; const ctx=cv.getContext("2d");
+  const T=SAFARI.tile, W=SAFARI._cssW, H=SAFARI._cssH;
+  const ax=SAFARI.px*T+T/2, ay=SAFARI.py*T+T/2;
+  const mapPxW=SF_W*T, mapPxH=SF_H*T;
+  let camX=Math.max(0,Math.min(ax-W/2,mapPxW-W));
+  let camY=Math.max(0,Math.min(ay-H/2,mapPxH-H));
+  ctx.clearRect(0,0,W,H); ctx.fillStyle="#0a1120"; ctx.fillRect(0,0,W,H);
+  const c0=Math.floor(camX/T), r0=Math.floor(camY/T);
+  const c1=Math.ceil((camX+W)/T), r1=Math.ceil((camY+H)/T);
+  for(let ry=r0;ry<=r1;ry++)for(let rx=c0;rx<=c1;rx++){
+    if(rx<0||ry<0||rx>=SF_W||ry>=SF_H)continue;
+    safariTile(ctx, SF_MAP[ry][rx], rx*T-camX, ry*T-camY, T, rx, ry);
+  }
+  safariAvatar(ctx, ax-camX, ay-camY, T);
+}
+function safariTile(ctx,t,x,y,T,gx,gy){
+  const alt=((gx+gy)&1)===0;
+  if(t===2){
+    ctx.fillStyle="#2f6fb0"; ctx.fillRect(x,y,T,T);
+    ctx.strokeStyle="rgba(255,255,255,.28)"; ctx.lineWidth=Math.max(1,T*0.05); ctx.lineCap="round";
+    const ph=SAFARI._wp||0;
+    ctx.beginPath();
+    for(let i=0;i<2;i++){const yy=y+T*(0.38+i*0.32);ctx.moveTo(x+T*0.12,yy);ctx.lineTo(x+T*0.4+Math.sin(ph+gx)*T*0.05,yy);ctx.moveTo(x+T*0.58,yy);ctx.lineTo(x+T*0.86,yy);}
+    ctx.stroke(); return;
+  }
+  ctx.fillStyle=alt?"#3f8f4a":"#3a8646"; ctx.fillRect(x,y,T,T);
+  if(t===0){ ctx.fillStyle=alt?"#c9b184":"#c3aa7c"; ctx.fillRect(x,y,T,T); }
+  else if(t===6){
+    ctx.fillStyle=alt?"#c9b184":"#c3aa7c"; ctx.fillRect(x,y,T,T);
+    const cx=x+T*0.5,cy=y+T*0.5,r=T*0.085;
+    ctx.fillStyle="#f2637a";
+    for(let a=0;a<5;a++){const an=a/5*6.283;ctx.beginPath();ctx.arc(cx+Math.cos(an)*r*1.5,cy+Math.sin(an)*r*1.5,r,0,7);ctx.fill();}
+    ctx.fillStyle="#ffd447"; ctx.beginPath();ctx.arc(cx,cy,r*0.95,0,7);ctx.fill();
+  }
+  else if(t===1){
+    ctx.fillStyle=alt?"#2e7d3a":"#296f34"; ctx.fillRect(x,y,T,T);
+    ctx.strokeStyle="#57b04f"; ctx.lineWidth=Math.max(1,T*0.06); ctx.lineCap="round";
+    for(let i=0;i<4;i++){const bx=x+T*(0.22+i*0.19);ctx.beginPath();ctx.moveTo(bx,y+T*0.84);ctx.lineTo(bx+(i%2?T*0.06:-T*0.06),y+T*0.46);ctx.stroke();}
+  }
+  else if(t===5){
+    ctx.fillStyle=alt?"#e3c98f":"#dcc084"; ctx.fillRect(x,y,T,T);
+    ctx.fillStyle="rgba(150,110,60,.5)";
+    ctx.beginPath();ctx.arc(x+T*0.3,y+T*0.34,T*0.05,0,7);ctx.arc(x+T*0.7,y+T*0.6,T*0.045,0,7);ctx.arc(x+T*0.5,y+T*0.8,T*0.04,0,7);ctx.fill();
+    ctx.fillStyle="rgba(255,215,110,.85)";ctx.font=`${Math.round(T*0.3)}px serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("✦",x+T*0.74,y+T*0.28);
+  }
+  else if(t===3){
+    ctx.fillStyle="#7a5230"; ctx.fillRect(x+T*0.44,y+T*0.55,T*0.12,T*0.36);
+    ctx.fillStyle="#2f7a3a"; ctx.beginPath();ctx.arc(x+T*0.5,y+T*0.42,T*0.34,0,7);ctx.fill();
+    ctx.fillStyle="#3e9a4a"; ctx.beginPath();ctx.arc(x+T*0.4,y+T*0.36,T*0.15,0,7);ctx.fill();
+    ctx.fillStyle="#2a6d34"; ctx.beginPath();ctx.arc(x+T*0.62,y+T*0.48,T*0.13,0,7);ctx.fill();
+  }
+  else if(t===4){
+    ctx.fillStyle="#8b95a3"; sfRoundRect(ctx,x+T*0.15,y+T*0.26,T*0.7,T*0.58,T*0.16);ctx.fill();
+    ctx.fillStyle="#a7b0bc"; sfRoundRect(ctx,x+T*0.22,y+T*0.31,T*0.4,T*0.26,T*0.1);ctx.fill();
+  }
+}
+function safariAvatar(ctx,cx,cy,T){
+  const r=T*0.3;
+  ctx.fillStyle="rgba(0,0,0,.25)";ctx.beginPath();ctx.ellipse(cx,cy+r*0.95,r*0.8,r*0.34,0,0,7);ctx.fill();
+  ctx.lineWidth=Math.max(1,T*0.04);ctx.strokeStyle="#3a2b12";
+  ctx.fillStyle="#f2b441";ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.fill();ctx.stroke();
+  ctx.fillStyle="#7a5230";
+  ctx.beginPath();ctx.ellipse(cx,cy-r*0.42,r*1.08,r*0.36,0,0,7);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy-r*0.6,r*0.55,Math.PI,0);ctx.fill();ctx.stroke();
+  const f=SAFARI.facing; ctx.fillStyle="#3a2b12";
+  let ox=0,oy=r*0.12; if(f==="left")ox=-r*0.22;else if(f==="right")ox=r*0.22;else if(f==="up")oy=-r*0.6;
+  if(f!=="up"){ctx.beginPath();ctx.arc(cx-r*0.26+ox,cy+oy,r*0.1,0,7);ctx.arc(cx+r*0.26+ox,cy+oy,r*0.1,0,7);ctx.fill();}
+}
+
+/* ---- 이동 ---- */
+function safariStep(dir){
+  if(!SAFARI.active||SAFARI.moving||SAFARI._enc)return;
+  SAFARI.facing=dir;
+  const d=SF_DIRS[dir]; const nx=SAFARI.tx+d[0], ny=SAFARI.ty+d[1];
+  if(nx<0||ny<0||nx>=SF_W||ny>=SF_H||!SF_WALK(SF_MAP[ny][nx]))return;
+  SAFARI.moveFrom={px:SAFARI.px,py:SAFARI.py};
+  SAFARI.tx=nx; SAFARI.ty=ny;
+  SAFARI.moveTo={px:nx,py:ny};
+  SAFARI.moveStart=performance.now();
+  SAFARI.moving=true;
+}
+function safariArrive(){
+  const t=SF_MAP[SAFARI.ty][SAFARI.tx];
+  if((t===1||t===5)&&!SAFARI._enc){
+    const rare=(t===5);
+    if(Math.random()<(rare?0.34:0.24)){ safariEncounter(rare); return; }
+  }
+  if(SAFARI.held&&!SAFARI._enc)safariStep(SAFARI.held);
+}
+function safariBindControls(){
+  if(SF_CTRL_BOUND)return; SF_CTRL_BOUND=true;
+  document.querySelectorAll(".sf-dpad button[data-dir]").forEach(b=>{
+    const dir=b.dataset.dir;
+    b.addEventListener("pointerdown",e=>{e.preventDefault();SAFARI.held=dir;safariStep(dir);});
+    const clr=()=>{if(SAFARI.held===dir)SAFARI.held=null;};
+    b.addEventListener("pointerup",clr); b.addEventListener("pointerleave",clr); b.addEventListener("pointercancel",clr);
+  });
+  const ex=$("#sfExit"); if(ex)ex.addEventListener("click",()=>{ if(confirm("사파리존에서 나가시겠어요? (남은 시간·볼은 사라집니다)")) safariExit("quit"); });
+  const stage=$("#safariStage"); let sx=0,sy=0,sw=false;
+  if(stage){
+    stage.addEventListener("pointerdown",e=>{if(e.target.closest(".sf-dpad")||e.target.closest(".sf-exit"))return;sx=e.clientX;sy=e.clientY;sw=true;});
+    stage.addEventListener("pointerup",e=>{if(!sw)return;sw=false;const dx=e.clientX-sx,dy=e.clientY-sy;if(Math.abs(dx)<18&&Math.abs(dy)<18)return;if(Math.abs(dx)>Math.abs(dy))safariStep(dx>0?"right":"left");else safariStep(dy>0?"down":"up");});
+  }
+  window.addEventListener("keydown",e=>{if(!SAFARI.active)return;const k={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right"}[e.key];if(k){e.preventDefault();SAFARI.held=k;safariStep(k);}});
+  window.addEventListener("keyup",e=>{const k={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right"}[e.key];if(k&&SAFARI.held===k)SAFARI.held=null;});
+  window.addEventListener("resize",()=>{if(SAFARI.active)safariResize();});
+}
+function safariUpdHud(){
+  const r=Math.max(0,Math.floor((SAFARI.tEnd-Date.now())/1000));
+  const bt=$("#sfBalls"), tt=$("#sfTime");
+  if(bt)bt.textContent="🎯 "+SAFARI.balls;
+  if(tt){tt.textContent="⏱ "+Math.floor(r/60)+":"+String(r%60).padStart(2,"0"); tt.classList.toggle("warn",r<=15);}
+}
+
+/* ---- 인카운터 (인카운터 문법 통일: 퀴즈 → 포획) ---- */
+function safariEncounter(rare){
+  SAFARI.held=null;
+  const m=safariRollMonster(rare);
+  S.seenSet.add(m.id);
+  SAFARI._enc={m,need:QUIZ_COUNT[m.grade],done:0,rare};
+  if(m.grade==="S")globalFeed(`⚡ <b>사파리존</b>에서 전설 환수 <b>${m.name}</b> 목격! (${dispSelf()})`);
+  renderSafariEnc();
+  $("#mEnc").classList.add("on");
+  if(navigator.vibrate)navigator.vibrate([70,40,70]);
+}
+function renderSafariEnc(){
+  const e=SAFARI._enc,m=e.m,tc=TYPE_COLOR[m.type],gc=GRADE_COLOR[m.grade];
+  const canThrow=SAFARI.balls>0;
+  $("#encSheet").innerHTML=`<div class="grip"></div>
+    <div class="enc-title">🏕️ 사파리존 — 야생 환수 발견!</div>
+    <div class="art-stage" style="--tc:${tc}">${artHTML(m)}</div>
+    <div class="enc-name">${m.name}</div>
+    <div class="badges"><span class="badge type" style="--tc:${tc}">${TYPE_EMOJI[m.type]} ${m.type}</span>
+      <span class="badge grade" style="--gc:${gc}">${m.grade}등급</span>
+      ${m.safariOnly?'<span class="badge safari">🏕️ 사파리 한정</span>':""}</div>
+    <div style="text-align:center;font-size:.82rem;color:var(--sub);margin-bottom:10px;">퀴즈 ${e.need}문제를 ${e.need>1?"연속으로 ":""}맞히면 포획! · 남은 사파리볼 <b style="color:#ff9b6b">${SAFARI.balls}</b></div>
+    <button class="btn gold" id="sfThrow" ${canThrow?"":"disabled"}>🎯 사파리볼 던지기</button>
+    <button class="btn ghost" id="sfFlee">놓아준다</button>`;
+  const th=$("#sfThrow"); if(th)th.addEventListener("click",safariThrow);
+  $("#sfFlee").addEventListener("click",safariCloseEnc);
+}
+function safariThrow(){
+  if(SAFARI.balls<=0){toast("사파리볼이 없습니다");return;}
+  SAFARI.balls--; SAFARI.attempts++; safariUpdHud();
+  safariEncQuiz();
+}
+function safariEncQuiz(){
+  const e=SAFARI._enc; const q=pickQuiz(QUIZ_DIFF[e.m.grade]);
+  $("#encSheet").innerHTML=`<div class="grip"></div><div id="sfQuizBox"></div>`;
+  renderQuiz($("#sfQuizBox"),q,{step:`퀴즈 ${e.done+1} / ${e.need}`,ctx:"사파리존",mon:e.m.name},ok=>{
+    if(!ok)return safariEncFail();
+    e.done++;
+    if(e.done>=e.need)safariCapture();
+    else{toast(`정답! ${e.need-e.done}문제 남았습니다`);safariEncQuiz();}
+  });
+}
+function safariEncFail(){
+  const m=SAFARI._enc.m;
+  $("#encSheet").innerHTML=`<div class="grip"></div>
+    <div style="text-align:center;padding:8px 0;"><div style="font-size:3rem;">💨</div>
+    <div class="enc-name">${m.name}은(는) 달아났다…</div>
+    <div style="font-size:.83rem;color:var(--sub);margin-top:6px;">사파리볼 하나를 썼다. 남은 볼 ${SAFARI.balls}개</div></div>
+    <button class="btn ghost" id="sfEncClose">계속 탐험</button>`;
+  $("#sfEncClose").addEventListener("click",safariCloseEnc);
+}
+function safariCapture(){
+  const m=SAFARI._enc.m; const g=grantMonster(m); const pts=g.pts, isNew=g.isNew;
+  SAFARI.caught++;
+  addFeed(`🏕️ 사파리존에서 <b>${m.name}</b>(${m.grade}) 포획! +${pts}점 ${isNew?"· 도감 신규📖":""}`);
+  if(!DEMO_MODE&&(m.grade==="A"||m.grade==="S"))globalFeed(`🎉 <b>${dispSelf()}</b>님이 사파리존에서 ${m.grade}등급 <b>${m.name}</b> 포획!`);
+  savePlayer();
+  $("#encSheet").innerHTML=`<div class="grip"></div>
+    <div style="text-align:center;">
+    <div class="art-stage" style="--tc:${TYPE_COLOR[m.type]}">${artHTML(m)}</div>
+    <div class="enc-name">🎉 ${m.name} 포획 성공!</div>
+    <div style="font-size:1.25rem;color:var(--gold);font-weight:800;">+${pts}점</div>
+    ${isNew?'<div style="color:var(--gold);font-size:.85rem;margin-top:4px;">✨ 도감에 새로 등록되었습니다</div>':""}
+    ${m.safariOnly?'<div style="color:#6FCFE3;font-size:.8rem;margin-top:4px;">🏕️ 사파리존에서만 만날 수 있는 희귀 환수!</div>':""}
+    <div class="dex-text" style="text-align:left;">${m.dex}</div></div>
+    <button class="btn gold" id="sfEncClose">계속 탐험</button>`;
+  $("#sfEncClose").addEventListener("click",safariCloseEnc);
+  if(navigator.vibrate)navigator.vibrate(200);
+}
+function safariCloseEnc(){
+  $("#mEnc").classList.remove("on"); SAFARI._enc=null;
+  if(SAFARI.active&&SAFARI.balls<=0){ safariExit("balls"); }
+}
+
 /* ==================== 부트 ==================== */
 function bootUI(){
   buildDexSide();renderDex();refreshHUD();renderBattleLog();renderBattleButtons();renderHealGateNote();updateNavLocks();updateActionLocks();
   if(!DEMO_MODE)$("#btnSim").style.display="none"; /* 실전에선 테스트 버튼 자동 숨김 */
   $("#chatGo").addEventListener("click",sendChat);
   $("#chatIn").addEventListener("keydown",e=>{if(e.key==="Enter")sendChat();});
-  addFeed(DEMO_MODE?"환수 원정대 v0.6 (로컬 데모) — 탐험을 시작하세요!":`<b>${dispSelf()}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
+  addFeed(DEMO_MODE?"환수 원정대 v0.7 (로컬 데모) — 탐험을 시작하세요!":`<b>${dispSelf()}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
 }
 fbInit();
 </script>

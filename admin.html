@@ -102,6 +102,22 @@ th{color:var(--sub);font-weight:600;}
       <div class="stat" style="margin-top:8px;">상태: <b id="healStat">-</b> · 현재 코드 <span class="code-live" id="healCode">------</span></div>
       <div class="stat">※ 코드는 대형 스크린이 '치유의 샘' 모드로 켜져 있는 동안 15초마다 생성됩니다.</div>
     </div>
+    <div class="card">
+      <h3>🏕️ 사파리존 (가상 맵)</h3>
+      <div class="row2"><span class="stat" style="width:90px;">사파리존</span>
+        <button id="safariOpen" class="gold">사파리 열기</button>
+        <button id="safariClose" class="red">사파리 닫기</button></div>
+      <div class="row2" style="margin-top:8px;">
+        <span class="stat" style="width:90px;">정원(동시)</span>
+        <input id="safariCap" type="number" min="1" max="40" value="6" style="width:70px;">
+        <span class="stat" style="width:70px;">사파리볼</span>
+        <input id="safariBalls" type="number" min="1" max="30" value="8" style="width:70px;">
+        <span class="stat" style="width:70px;">체류(초)</span>
+        <input id="safariDur" type="number" min="30" max="600" value="180" style="width:80px;">
+        <button id="safariSave" class="gold" style="width:90px;">설정 저장</button></div>
+      <div class="stat" style="margin-top:8px;">상태: <b id="safariStat">-</b> · 현재 입장 <b id="safariOcc">0</b>명 · 정원 <b id="safariCapS">6</b>명</div>
+      <div class="stat">※ 참가자는 사파리존 탭에서 입장 퀴즈 1문제를 풀고 입장합니다. 정원 초과 시 자동 대기, 시간·볼 소진 시 자동 퇴장됩니다. (인당 최대 2회 입장)</div>
+    </div>
   </div>
   <div class="card">
     <h3>📣 공지 발송 — 전 참가자 팝업 + 피드 + 스크린 티커</h3>
@@ -301,6 +317,14 @@ function boot(){
     const v=s.val()||{};
     $("#healStat").textContent=v.open?"🟢 열림":"🔴 닫힘";
     $("#healCode").textContent=v.code||"------";});
+  DB.ref("stations/safari").on("value",s=>{
+    const v=s.val()||{};
+    $("#safariStat").textContent=v.open?"🟢 열림":"🔴 닫힘";
+    $("#safariOcc").textContent=v.occ?Object.keys(v.occ).length:0;
+    $("#safariCapS").textContent=v.cap||6;
+    if(v.cap&&document.activeElement!==$("#safariCap"))$("#safariCap").value=v.cap;
+    if(v.balls&&document.activeElement!==$("#safariBalls"))$("#safariBalls").value=v.balls;
+    if(v.dur&&document.activeElement!==$("#safariDur"))$("#safariDur").value=v.dur;});
   DB.ref("game/entryCode").on("value",s=>{$("#entryNow").textContent=s.val()||"(설정 안 됨 — 자유 입장)";});
   DB.ref("game/timerPreset").on("value",s=>{PRESET=+s.val()||0;
     $("#timerPresetStat").textContent=PRESET?`⏱ 라운드 시작 시 자동 타이머: ${PRESET}분`:"타이머 미설정 — 라운드 시작 시 타이머 없이 진행됩니다";});
@@ -359,6 +383,13 @@ document.querySelectorAll("[data-sc]").forEach(b=>{
   b.addEventListener("click",()=>{DB.ref("screen/mode").set(b.dataset.sc);toast("스크린 모드: "+b.dataset.sc);});});
 $("#healOpen").addEventListener("click",()=>{DB.ref("stations/heal/open").set(true);toast("치유의 샘 열림");});
 $("#healClose").addEventListener("click",()=>{DB.ref("stations/heal/open").set(false);toast("치유의 샘 닫힘");});
+$("#safariOpen").addEventListener("click",()=>{
+  const cap=Math.max(1,+$("#safariCap").value||6),balls=Math.max(1,+$("#safariBalls").value||8),dur=Math.max(30,+$("#safariDur").value||180);
+  DB.ref("stations/safari").update({open:true,cap,balls,dur});toast("사파리존 열림");});
+$("#safariClose").addEventListener("click",()=>{DB.ref("stations/safari/open").set(false);toast("사파리존 닫힘 — 입장자 전원 자동 퇴장");});
+$("#safariSave").addEventListener("click",()=>{
+  const cap=Math.max(1,+$("#safariCap").value||6),balls=Math.max(1,+$("#safariBalls").value||8),dur=Math.max(30,+$("#safariDur").value||180);
+  DB.ref("stations/safari").update({cap,balls,dur});toast("사파리 설정 저장됨");});
 $("#noticeGo").addEventListener("click",()=>{
   const v=$("#noticeIn").value.trim();if(!v)return;
   DB.ref("feed").push({msg:"📣 "+v,type:"notice",ts:firebase.database.ServerValue.TIMESTAMP});
