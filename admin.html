@@ -126,6 +126,8 @@ th{color:var(--sub);font-weight:600;}
     <div class="row2" style="margin-top:6px;">
       <button class="gold" id="noticeGo" style="flex:1;">📌 발송 (상단 고정)</button>
       <button class="red" id="noticeClear" style="width:120px;">고정 해제</button></div>
+    <div class="row2" style="margin-top:8px;">
+      <button id="chatToggle" style="flex:1;">💬 채팅 금지</button></div>
     <div class="stat">최신 공지가 참가자 '실시간 소식' 최상단에 고정됩니다. 제목을 누르면 내용 팝업이 다시 뜹니다. 새 공지를 올리면 교체됩니다.</div>
   </div>
 </div>
@@ -409,6 +411,11 @@ $("#noticeGo").addEventListener("click",()=>{
   DB.ref("feed").push({msg:"📣 "+(t||"진행자 공지"),ts:firebase.database.ServerValue.TIMESTAMP});
   toast("공지 발송 완료 (상단 고정 + 팝업)");});
 $("#noticeClear").addEventListener("click",()=>{DB.ref("announce").remove();toast("고정 공지 해제됨");});
+DB.ref("control/chatOff").on("value",s=>{const on=!!s.val();const b=$("#chatToggle");if(b){b.textContent=on?"🔓 채팅 허용":"💬 채팅 금지";b.style.background=on?"#c0343f":"";b.style.color=on?"#fff":"";}});
+$("#chatToggle").addEventListener("click",async()=>{
+  try{const s=await DB.ref("control/chatOff").get();const cur=!!s.val();
+    await DB.ref("control/chatOff").set(!cur);
+    toast(!cur?"채팅 금지됨 (전 참가자)":"채팅 허용됨");}catch(e){toast("실패: "+e.message,1);}});
 /* ---- 참가자 ---- */
 async function playerAction(a,uid,nm){
   const ref=DB.ref("players/"+uid);
@@ -656,7 +663,7 @@ $("#blockAll").addEventListener("click",async()=>{
 $("#rstAll").addEventListener("click",async()=>{
   if(!confirm("참가자·피드·채팅·배틀방·게임상태를 모두 초기화합니다. 계속?"))return;
   try{
-    for(const k of ["players","feed","chat","battles","gifts","removals","uniqueClaims","blocks","announce"])await DB.ref(k).remove();
+    for(const k of ["players","feed","chat","battles","gifts","removals","uniqueClaims","blocks","announce","control"])await DB.ref(k).remove();
     await DB.ref("control/clearFeed").set(Date.now());
     await DB.ref("game/state").set({phase:"lobby",timerEnd:0});
     toast("전체 초기화 완료 ✅ (문제은행·환수·이미지는 유지)");}catch(e){toast("실패: "+e.message,1);}});

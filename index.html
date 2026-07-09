@@ -183,7 +183,7 @@ nav button.lockdim{opacity:.35;}
 #v-safari .sf-open{color:#7CE38B;font-weight:700;font-size:.9rem;margin:8px 0;}
 .safari-stage{position:relative;width:100%;border-radius:14px;overflow:hidden;border:2px solid #23407a;background:#0a1120;box-shadow:0 8px 26px rgba(0,0,0,.45);touch-action:none;}
 .safari-stage canvas{display:block;width:100%;height:auto;image-rendering:auto;}
-.sf-hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:linear-gradient(180deg,rgba(8,14,28,.85),transparent);pointer-events:none;z-index:3;}
+.sf-hud{position:absolute;top:0;left:0;right:0;display:flex;gap:6px;justify-content:flex-start;align-items:center;padding:8px 10px;background:linear-gradient(180deg,rgba(8,14,28,.85),transparent);pointer-events:none;z-index:3;}
 .sf-hud .chip{background:rgba(16,24,44,.82);border:1px solid var(--line);border-radius:99px;padding:4px 11px;font-size:.8rem;font-weight:700;}
 .sf-hud .chip.ball{color:#ff9b6b;}
 .sf-hud .chip.time{color:#8fd4ff;}
@@ -309,6 +309,7 @@ nav button.lockdim{opacity:.35;}
         <div class="sf-hud">
           <div class="chip ball" id="sfBalls">🎯 0</div>
           <div class="chip time" id="sfTime">⏱ 0:00</div>
+          <div class="chip peers" id="sfPeers" style="display:none;color:#a8e6c8;">👥 0</div>
         </div>
         <canvas id="safariCanvas"></canvas>
         <div class="sf-dpad">
@@ -455,6 +456,7 @@ function showNotice(msg){
   if(navigator.vibrate)navigator.vibrate([120,60,120]);
 }
 function sendChat(){
+  if(S.chatOff){toast("진행자가 채팅을 잠갔습니다");return;}
   const v=$("#chatIn").value.trim();if(!v)return;
   $("#chatIn").value="";
   if(DEMO_MODE){S.chat.push({name:dispSelf(),msg:v,t:nowHM()});renderFeeds();return;}
@@ -1553,7 +1555,7 @@ const SF_DEFAULT={cap:6,balls:8,dur:180};
 const SAFARI={active:false,balls:0,ballsMax:0,tEnd:0,dur:0,
   tx:SF_START.x,ty:SF_START.y,px:SF_START.x,py:SF_START.y,
   moving:false,moveFrom:null,moveTo:null,moveStart:0,facing:"down",held:null,
-  raf:null,timerIv:null,caught:0,attempts:0,occInc:false,_enc:null,tile:24,_wp:0,_cssW:360,_cssH:360};
+  raf:null,timerIv:null,caught:0,attempts:0,occInc:false,_enc:null,tile:24,_wp:0,_cssW:360,_cssH:360,others:{}};
 let SAFARI_ENTRIES=(typeof window!=="undefined"&&typeof window._sfEntriesInit==="number")?window._sfEntriesInit:0, SF_CTRL_BOUND=false;
 
 function safariOpen(){ return DEMO_MODE || !!(SAFARI_STATION&&SAFARI_STATION.open); }
@@ -1642,6 +1644,60 @@ function safariRequestEntry(){
 }
 
 /* ---- 세션 ---- */
+/* ---- 멀티플레이 (실시간 아바타 동기화) ---- */
+let SF_LIVE_REF=null, SF_LIVE_CB=null, SF_LAST_BCAST=0;
+const SF_OTHER_COLORS=["#5aa9e6","#7ee08a","#e6795a","#c78ee0","#e0c05a","#5ae0c8"];
+function sfColorFor(uid){let h=0;for(let i=0;i<uid.length;i++)h=(h*31+uid.charCodeAt(i))>>>0;return SF_OTHER_COLORS[h%SF_OTHER_COLORS.length];}
+function safariStartMP(){
+  SAFARI.others={};
+  if(DEMO_MODE||!DB||!UID)return;
+  try{
+    SF_LIVE_REF=DB.ref("stations/safari/live/"+UID);
+    SF_LIVE_REF.onDisconnect().remove();
+    safariBroadcast(true);
+    const allRef=DB.ref("stations/safari/live");
+    SF_LIVE_CB=allRef.on("value",s=>{
+      const v=s.val()||{}, next={};
+      for(const uid in v){
+        if(uid===UID)continue;
+        const d=v[uid]; if(!d||typeof d.x!=="number")continue;
+        const prev=SAFARI.others[uid];
+        next[uid]={tx:d.x,ty:d.y,facing:d.facing||"down",name:d.name||"원정대원",uid,
+          px:prev?prev.px:d.x, py:prev?prev.py:d.y};
+      }
+      SAFARI.others=next;
+      safariUpdHud();
+    });
+  }catch(e){}
+}
+function safariBroadcast(force){
+  if(DEMO_MODE||!DB||!UID||!SF_LIVE_REF)return;
+  const now=performance.now();
+  if(!force && now-SF_LAST_BCAST<140)return;
+  SF_LAST_BCAST=now;
+  try{ SF_LIVE_REF.set({x:SAFARI.tx,y:SAFARI.ty,facing:SAFARI.facing,name:dispSelf(),ts:Date.now()}); }catch(e){}
+}
+function safariStopMP(){
+  try{ if(SF_LIVE_CB)DB.ref("stations/safari/live").off("value",SF_LIVE_CB); }catch(e){}
+  SF_LIVE_CB=null;
+  try{ if(SF_LIVE_REF){SF_LIVE_REF.onDisconnect().cancel();SF_LIVE_REF.remove();} }catch(e){}
+  SF_LIVE_REF=null;
+  SAFARI.others={};
+}
+function safariOtherAvatar(ctx,cx,cy,T,facing,name,color){
+  const r=T*0.3;
+  ctx.fillStyle="rgba(0,0,0,.22)";ctx.beginPath();ctx.ellipse(cx,cy+r*0.95,r*0.8,r*0.34,0,0,7);ctx.fill();
+  ctx.lineWidth=Math.max(1,T*0.04);ctx.strokeStyle="#12233f";
+  ctx.fillStyle=color||"#5aa9e6";ctx.beginPath();ctx.arc(cx,cy,r,0,7);ctx.fill();ctx.stroke();
+  ctx.fillStyle="#12233f";
+  let ox=0,oy=r*0.12; if(facing==="left")ox=-r*0.22;else if(facing==="right")ox=r*0.22;else if(facing==="up")oy=-r*0.6;
+  if(facing!=="up"){ctx.beginPath();ctx.arc(cx-r*0.26+ox,cy+oy,r*0.1,0,7);ctx.arc(cx+r*0.26+ox,cy+oy,r*0.1,0,7);ctx.fill();}
+  const nm=(name||"").slice(0,6);
+  if(nm){ ctx.font=`700 ${Math.round(T*0.26)}px system-ui`; ctx.textAlign="center"; ctx.textBaseline="bottom";
+    const w=ctx.measureText(nm).width+T*0.2;
+    ctx.fillStyle="rgba(10,17,32,.75)"; sfRoundRect(ctx,cx-w/2,cy-r-T*0.42,w,T*0.34,T*0.1); ctx.fill();
+    ctx.fillStyle="#dbe6fb"; ctx.fillText(nm,cx,cy-r-T*0.12); }
+}
 function safariStart(cfg){
   SAFARI.active=true; SAFARI_ENTRIES++; savePlayer();
   SAFARI.balls=cfg.balls; SAFARI.ballsMax=cfg.balls; SAFARI.dur=cfg.dur;
@@ -1659,6 +1715,7 @@ function safariStart(cfg){
     safariUpdHud();
     if(r<=0)safariExit("time");
   },500);
+  safariStartMP();
   safariEnsureLoop();
 }
 function safariExit(reason){
@@ -1667,6 +1724,7 @@ function safariExit(reason){
   clearInterval(SAFARI.timerIv);
   if(SAFARI.raf){cancelAnimationFrame(SAFARI.raf);SAFARI.raf=null;}
   SAFARI.held=null;SAFARI.moving=false;SAFARI._enc=null;
+  safariStopMP();
   $("#mEnc").classList.remove("on");
   safariRelease(); savePlayer();
   const rsn=reason==="time"?"시간이 종료되었습니다":reason==="balls"?"사파리볼을 모두 사용했습니다":reason==="closed"?"사파리존이 종료되었습니다":"사파리존에서 나왔습니다";
@@ -1706,6 +1764,8 @@ function safariLoop(ts){
     SAFARI.py=SAFARI.moveFrom.py+(SAFARI.moveTo.py-SAFARI.moveFrom.py)*p;
     if(p>=1){SAFARI.moving=false;SAFARI.px=SAFARI.moveTo.px;SAFARI.py=SAFARI.moveTo.py;safariArrive();}
   }
+  const others=SAFARI.others||{};
+  for(const uid in others){const o=others[uid];o.px+=(o.tx-o.px)*0.25;o.py+=(o.ty-o.py)*0.25;}
   safariDraw();
   SAFARI.raf=requestAnimationFrame(safariLoop);
 }
@@ -1723,6 +1783,10 @@ function safariDraw(){
     if(rx<0||ry<0||rx>=SF_W||ry>=SF_H)continue;
     safariTile(ctx, SF_MAP[ry][rx], rx*T-camX, ry*T-camY, T, rx, ry);
   }
+  const others=SAFARI.others||{};
+  for(const uid in others){const o=others[uid];const ox=o.px*T+T/2, oy=o.py*T+T/2;
+    if(ox<camX-T||ox>camX+W+T||oy<camY-T||oy>camY+H+T)continue;
+    safariOtherAvatar(ctx, ox-camX, oy-camY, T, o.facing, o.name, sfColorFor(uid));}
   safariAvatar(ctx, ax-camX, ay-camY, T);
 }
 function safariTile(ctx,t,x,y,T,gx,gy){
@@ -1790,6 +1854,7 @@ function safariStep(dir){
   SAFARI.moveTo={px:nx,py:ny};
   SAFARI.moveStart=performance.now();
   SAFARI.moving=true;
+  safariBroadcast();
 }
 function safariArrive(){
   const t=SF_MAP[SAFARI.ty][SAFARI.tx];
@@ -1819,9 +1884,10 @@ function safariBindControls(){
 }
 function safariUpdHud(){
   const r=Math.max(0,Math.floor((SAFARI.tEnd-Date.now())/1000));
-  const bt=$("#sfBalls"), tt=$("#sfTime");
+  const bt=$("#sfBalls"), tt=$("#sfTime"), pp=$("#sfPeers");
   if(bt)bt.textContent="🎯 "+SAFARI.balls;
   if(tt){tt.textContent="⏱ "+Math.floor(r/60)+":"+String(r%60).padStart(2,"0"); tt.classList.toggle("warn",r<=15);}
+  if(pp){const n=SAFARI.others?Object.keys(SAFARI.others).length:0; pp.style.display=n>0?"":"none"; pp.textContent="👥 "+n;}
 }
 
 /* ---- 인카운터 (인카운터 문법 통일: 퀴즈 → 포획) ---- */
@@ -1937,7 +2003,7 @@ function bootUI(){
   if(!DEMO_MODE)$("#btnSim").style.display="none"; /* 실전에선 테스트 버튼 자동 숨김 */
   $("#chatGo").addEventListener("click",sendChat);
   $("#chatIn").addEventListener("keydown",e=>{if(e.key==="Enter")sendChat();});
-  addFeed(DEMO_MODE?"환수 원정대 v0.8 (로컬 데모) — 탐험을 시작하세요!":`<b>${dispSelf()}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
+  addFeed(DEMO_MODE?"환수 원정대 v0.9 (로컬 데모) — 탐험을 시작하세요!":`<b>${dispSelf()}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
 }
 fbInit();
 </script>
