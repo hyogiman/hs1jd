@@ -580,9 +580,12 @@ function attachListeners(){
   DB.ref("monsterImages").on("value",s=>{const v=s.val()||{};let ch=false;for(const id in v){const m=byId(id);if(m&&m.imageUrl!==v[id]){m.imageUrl=v[id];ch=true;}}if(ch)renderDex();});
   let RAW_QUIZZES=null;
   function applyQuizPool(){
-    let arr = RAW_QUIZZES ? Object.values(RAW_QUIZZES).filter(q=>q&&q.question) : [];
-    if(S.useDefaultQuiz===false) arr = arr.filter(q=>!q.isDefault);
-    QUIZ_BANK = arr.length ? arr : QUIZ_BANK_BUILTIN;
+    // DB에 올라온 문항 중 '진행자가 직접 추가/업로드한 것'만 (기본 60문항 업로드분은 isDefault로 제외 — 중복 방지)
+    const custom = RAW_QUIZZES ? Object.values(RAW_QUIZZES).filter(q=>q&&q.question&&!q.isDefault) : [];
+    // 기본 60문항은 DB 업로드 여부와 무관하게 앱에 내장된 값을 그대로 사용
+    const base = (S.useDefaultQuiz!==false) ? QUIZ_BANK_BUILTIN : [];
+    const combined = base.concat(custom);
+    QUIZ_BANK = combined.length ? combined : QUIZ_BANK_BUILTIN; // 최후 안전장치: 풀이 완전히 비면 기본 60문항 사용
   }
   DB.ref("quizzes").on("value",s=>{RAW_QUIZZES=s.val(); applyQuizPool();});
   DB.ref("game/useDefaultQuiz").on("value",s=>{S.useDefaultQuiz = s.val()!==false; applyQuizPool();});

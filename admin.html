@@ -172,8 +172,8 @@ th{color:var(--sub);font-weight:600;}
       <button id="qExport">전체 내보내기(복사)</button>
       <button class="red" id="qClear">전체 삭제</button>
       <div class="row2" style="margin-top:10px;">
-        <button id="dfQuizToggle" style="flex:1;">기본 60문항 참가자 출제: 확인 중…</button></div>
-      <div class="stat">OFF로 하면 진행자가 직접 추가/업로드한 문항만 참가자에게 출제됩니다(기본 60문항 업로드된 것과 무관). 문항이 1개 이상만 있어도 즉시 참가자 앱에 반영됩니다.</div>
+        <button id="dfQuizToggle" style="flex:1;">기본 60문항 제외</button></div>
+      <div class="stat">누르면 참가자에게 기본 60문항이 출제되지 않고, 진행자가 직접 추가/업로드한 문항만 출제됩니다. 다시 누르면 해제되어 기본 60문항이 다시 포함됩니다. (기본 60문항은 앱에 항상 내장되어 있어 별도 업로드 없이도 즉시 반영됩니다) 문항이 1개 이상만 있어도 참가자 앱에 즉시 반영됩니다.</div>
       <details style="margin-top:8px;"><summary class="stat" style="cursor:pointer;">JSON 일괄 업로드 (고급)</summary>
         <textarea id="qBulk" placeholder='[{"question":"...","choices":["정답","오답","오답","오답"],"answer":0,"difficulty":"easy"}]'></textarea>
         <button id="qBulkGo">JSON 업로드</button></details>
@@ -345,9 +345,11 @@ function boot(){
   });
   DB.ref("control/chatOff").on("value",s=>{const on=!!s.val();const b=$("#chatToggle");if(b){b.textContent=on?"🔓 채팅 허용":"💬 채팅 금지";b.style.background=on?"#c0343f":"";b.style.color=on?"#fff":"";}});
   DB.ref("game/useDefaultQuiz").on("value",s=>{
-    const on=s.val()!==false; const b=$("#dfQuizToggle");
-    if(b){b.textContent=on?"✅ 기본 60문항 포함 중 (클릭 시 제외)":"🚫 기본 60문항 제외 중 (클릭 시 포함)";
-      b.style.background=on?"":"#5c2430"; b.style.borderColor=on?"":"var(--red)";}
+    const included=s.val()!==false; const b=$("#dfQuizToggle");
+    if(b){
+      b.textContent=included?"기본 60문항 제외":"🚫 기본 60문항 제외 중 — 클릭 시 제외 해제";
+      b.style.background=included?"":"#5c2430"; b.style.borderColor=included?"":"var(--red)"; b.style.color=included?"":"#fff";
+    }
   });
   function renderPlayers(){
     const rows=Object.entries(PCACHE).map(([uid,p])=>({uid,...p}));
@@ -559,9 +561,10 @@ $("#qExport").addEventListener("click",async()=>{
 $("#dfQuizToggle").addEventListener("click",async()=>{
   try{
     const s=await DB.ref("game/useDefaultQuiz").get();
-    const cur=s.val()!==false; // 기본값 true(포함)
-    await DB.ref("game/useDefaultQuiz").set(!cur);
-    toast(!cur?"기본 60문항 제외 — 진행자 문항만 출제됩니다":"기본 60문항 포함 — 함께 출제됩니다");
+    const curIncluded=s.val()!==false; // 지금까지 포함 상태였는지
+    const nextIncluded=!curIncluded;   // 이번 클릭 이후 상태
+    await DB.ref("game/useDefaultQuiz").set(nextIncluded);
+    toast(nextIncluded?"기본 60문항 제외 해제 — 기본 문항이 다시 출제됩니다":"기본 60문항 제외 — 진행자 문항만 출제됩니다");
   }catch(e){toast("실패: "+e.message,1);}});
 $("#qClear").addEventListener("click",()=>{if(confirm("문제은행 전체 삭제?")){DB.ref("quizzes").remove();toast("전체 삭제됨");}});
 /* ---- 환수 관리 ---- */
