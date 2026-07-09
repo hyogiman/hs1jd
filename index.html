@@ -206,6 +206,15 @@ nav button.lockdim{opacity:.35;}
 .pinned-notice .pn-ic{font-size:1.05rem;}
 .pinned-notice .pn-title{font-weight:800;font-size:.9rem;color:var(--gold);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .pinned-notice .pn-more{font-size:.68rem;color:var(--sub);white-space:nowrap;}
+.pin-display{display:flex;gap:10px;justify-content:center;margin:16px 0;}
+.pin-box{width:48px;height:60px;border:2px solid var(--line);border-radius:12px;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:1.9rem;font-weight:800;font-family:'Consolas',monospace;}
+.pin-box.active{border-color:var(--gold);box-shadow:0 0 0 3px rgba(240,180,65,.22);}
+.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:0 auto 12px;max-width:300px;}
+.pin-key{padding:17px 0;font-size:1.4rem;font-weight:800;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--ink);user-select:none;-webkit-tap-highlight-color:transparent;}
+.pin-key:active{background:var(--gold);color:#1a1305;}
+.pin-key.pin-fn{color:#ff9b6b;font-size:1.5rem;}
+.pin-key.pin-go{background:#2f6fb0;color:#fff;border:none;font-size:1.15rem;}
+.pin-key.pin-go:active{background:#3f86d0;color:#fff;}
 </style>
 </head>
 <body>
@@ -289,8 +298,8 @@ nav button.lockdim{opacity:.35;}
         복습 퀴즈를 맞히면 환수가 회복됩니다. 이전에 <b>틀렸던 문제가 우선 출제</b>됩니다 — 치유가 곧 복습!</div>
       <div class="lock-note" id="healGateNote"></div>
     </div>
-    <button class="btn ghost sm" id="btnHistory">📝 복습 노트 (푼 문제 다시보기)</button>
-    <div id="healList"></div>
+    <button class="btn ghost sm" id="btnHistory" style="margin:20px 0 0;">📝 복습 노트 (푼 문제 다시보기)</button>
+    <div id="healList" style="margin-top:18px;"></div>
   </section>
 
   <section class="view" id="v-safari">
@@ -419,8 +428,11 @@ function renderFeeds(){
   const chatRow=$("#chatRow");
   if(S.feedTab==="chat"){
     chatRow.style.display="flex";
-    box.innerHTML=S.chat.map(c=>`<div class="chat-item"><b>${c.name}</b>${c.msg}<time>${c.t}</time></div>`).join("")
-      ||'<div style="color:var(--sub);font-size:.8rem;padding:8px 2px;">첫 메시지를 남겨보세요!</div>';
+    const ci=$("#chatIn"),cg=$("#chatGo");
+    if(ci&&cg){ ci.disabled=!!S.chatOff; cg.disabled=!!S.chatOff; ci.placeholder=S.chatOff?"🔒 진행자가 채팅을 잠갔습니다":"하고 싶은 말을 남겨보세요"; }
+    box.innerHTML=(S.chatOff?'<div style="color:#ffb27a;font-size:.8rem;padding:6px 2px;">🔒 채팅이 잠긴 상태입니다.</div>':"")
+      +(S.chat.map(c=>`<div class="chat-item"><b>${c.name}</b>${c.msg}<time>${c.t}</time></div>`).join("")
+      ||'<div style="color:var(--sub);font-size:.8rem;padding:8px 2px;">첫 메시지를 남겨보세요!</div>');
     box.scrollTop=box.scrollHeight;
   }else{
     chatRow.style.display="none";
@@ -564,6 +576,7 @@ function attachListeners(){
     S.announce=s.val()||null; renderPinnedNotice();
     if(S.announce&&S.announce.ts&&S.announce.ts>S.joinTs) showNoticeFull(S.announce.title,S.announce.body);
   });
+  DB.ref("control/chatOff").on("value",s=>{S.chatOff=!!s.val();renderFeeds();});
 }
 function esc(t){return String(t==null?"":t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 function renderPinnedNotice(){
@@ -689,14 +702,14 @@ function onMotion(e){
   gravLP=gravLP*0.9+mag*0.1;
   const motion=mag-gravLP;
   const now=Date.now();
-  if(motion>3.0 && lastMag<=3.0){
+  if(motion>2.5 && lastMag<=2.5){
     const dt=now-lastStepAt;
-    if(dt>380 && dt<1500){
+    if(dt>340 && dt<1500){
       stepIntervals.push(dt); if(stepIntervals.length>6)stepIntervals.shift();
-      if(stepIntervals.length>=5){
+      if(stepIntervals.length>=4){
         const m=stepIntervals.reduce((x,y)=>x+y,0)/stepIntervals.length;
         const sd=Math.sqrt(stepIntervals.reduce((s,v)=>s+(v-m)**2,0)/stepIntervals.length);
-        if(sd/m<0.30 && m>=450) addSteps(1);
+        if(sd/m<0.52 && m>=360) addSteps(1);
       }
       lastStepAt=now;
     } else if(dt>=1500){
@@ -719,7 +732,7 @@ function scoutMsg(txt,hot){const el=$("#scoutMsg");el.textContent=txt;el.classLi
 function addSteps(n){
   if(!canExplore()){return;}
   S.stepCount=(S.stepCount||0)+n; S._stepDirty=true;
-  if(!S._stepSaveTm){S._stepSaveTm=setTimeout(()=>{S._stepSaveTm=null;if(S._stepDirty){S._stepDirty=false;savePlayer();}},4000);}
+  if(!S._stepSaveTm){S._stepSaveTm=setTimeout(()=>{S._stepSaveTm=null;if(S._stepDirty){S._stepDirty=false;savePlayer();}},2000);}
   if(Date.now()<S.cooldownUntil)return;
   S.steps+=n;
   const p=S.steps/S.stepGoal, sc=$("#scout");
@@ -1095,17 +1108,31 @@ async function hostBattle(){
 }
 function joinBattleUI(){
   if(!preBattleCheck())return;
-  B={mode:"joinui"};
-  $("#battleSheet").innerHTML=`<div class="grip"></div>
-    <div class="enc-title">상대의 배틀 코드를 입력하세요</div>
-    <input class="codeinput" id="joinCode" maxlength="4" inputmode="numeric" placeholder="0000">
-    <button class="btn blue" id="joinGo">배틀 참가!</button>
-    <button class="btn ghost sm" id="joinCancel">취소</button>`;
-  const ci=$("#joinCode");
-  ci.addEventListener("input",()=>{ci.value=ci.value.replace(/[^0-9]/g,"").slice(0,4);});
-  $("#joinGo").addEventListener("click",()=>joinBattle((ci.value||"").replace(/[^0-9]/g,"")));
-  $("#joinCancel").addEventListener("click",closeBattle);
+  B={mode:"joinui",typed:""};
+  renderJoinPad();
   $("#mBattle").classList.add("on");
+}
+function renderJoinPad(){
+  const t=B&&B.typed?B.typed:"";
+  const boxes=[0,1,2,3].map(i=>`<span class="pin-box${t.length===i?' active':''}">${t[i]||""}</span>`).join("");
+  const keys=["1","2","3","4","5","6","7","8","9","del","0","go"];
+  const keyHtml=keys.map(k=>{
+    if(k==="del")return `<button class="pin-key pin-fn" data-k="del">⌫</button>`;
+    if(k==="go")return `<button class="pin-key pin-go" data-k="go">참가</button>`;
+    return `<button class="pin-key" data-k="${k}">${k}</button>`;
+  }).join("");
+  $("#battleSheet").innerHTML=`<div class="grip"></div>
+    <div class="enc-title">상대의 배틀 코드 4자리를 입력하세요</div>
+    <div class="pin-display">${boxes}</div>
+    <div class="pinpad">${keyHtml}</div>
+    <button class="btn ghost sm" id="joinCancel">취소</button>`;
+  $("#battleSheet").querySelectorAll(".pin-key").forEach(b=>b.addEventListener("click",()=>{
+    const k=b.dataset.k;
+    if(k==="del"){ B.typed=(B.typed||"").slice(0,-1); renderJoinPad(); return; }
+    if(k==="go"){ joinBattle(B.typed||""); return; }
+    if((B.typed||"").length<4){ B.typed=(B.typed||"")+k; renderJoinPad(); }
+  }));
+  $("#joinCancel").addEventListener("click",closeBattle);
 }
 async function joinBattle(code){
   code=String(code||"").replace(/[^0-9]/g,"");
