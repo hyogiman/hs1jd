@@ -76,7 +76,9 @@ nav button.on{color:var(--ink);}nav button.on .ic{filter:none;transform:translat
 .inst .info{flex:1;min-width:0;}
 .inst .nm{font-weight:700;font-size:.92rem;}
 .inst .meta{font-size:.72rem;color:var(--sub);margin-top:2px;}
-.inst.faint{opacity:.55;border-color:#e0525266;}
+.inst.faint{border-color:#e0525266;}
+.inst.faint .thumb,.inst.faint .info{opacity:.5;}
+.inst.faint .btn{opacity:1;}
 .inst .fainttag{color:#ff8a8a;font-size:.7rem;font-weight:700;}
 .hpbar{height:8px;border-radius:99px;background:#253251;overflow:hidden;margin-top:5px;}
 .hpbar>i{display:block;height:100%;background:linear-gradient(90deg,#4caf50,#8bc34a);transition:width .5s;}
@@ -2043,7 +2045,7 @@ function bootUI(){
   if(!DEMO_MODE)$("#btnSim").style.display="none"; /* 실전에선 테스트 버튼 자동 숨김 */
   $("#chatGo").addEventListener("click",sendChat);
   $("#chatIn").addEventListener("keydown",e=>{if(e.key==="Enter")sendChat();});
-  addFeed(DEMO_MODE?"환수 원정대 v0.9.4 (로컬 데모) — 탐험을 시작하세요!":`<b>${dispSelf()}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
+  addFeed(DEMO_MODE?"환수 원정대 v0.9.5 (로컬 데모) — 탐험을 시작하세요!":`<b>${dispSelf()}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
 }
 fbInit();
 </script>
