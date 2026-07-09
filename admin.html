@@ -171,6 +171,9 @@ th{color:var(--sub);font-weight:600;}
       <button class="gold" id="qUploadDefault">기본 60문항 업로드</button>
       <button id="qExport">전체 내보내기(복사)</button>
       <button class="red" id="qClear">전체 삭제</button>
+      <div class="row2" style="margin-top:10px;">
+        <button id="dfQuizToggle" style="flex:1;">기본 60문항 참가자 출제: 확인 중…</button></div>
+      <div class="stat">OFF로 하면 진행자가 직접 추가/업로드한 문항만 참가자에게 출제됩니다(기본 60문항 업로드된 것과 무관). 문항이 1개 이상만 있어도 즉시 참가자 앱에 반영됩니다.</div>
       <details style="margin-top:8px;"><summary class="stat" style="cursor:pointer;">JSON 일괄 업로드 (고급)</summary>
         <textarea id="qBulk" placeholder='[{"question":"...","choices":["정답","오답","오답","오답"],"answer":0,"difficulty":"easy"}]'></textarea>
         <button id="qBulkGo">JSON 업로드</button></details>
@@ -341,6 +344,11 @@ function boot(){
     const ba=$("#blockAll"); if(ba){const on=!!BLOCKS._all;ba.textContent=on?"🔓 전체 차단 해제":"🚫 전체 환수획득 차단";ba.style.background=on?"#c0343f":"";ba.style.color=on?"#fff":"";}
   });
   DB.ref("control/chatOff").on("value",s=>{const on=!!s.val();const b=$("#chatToggle");if(b){b.textContent=on?"🔓 채팅 허용":"💬 채팅 금지";b.style.background=on?"#c0343f":"";b.style.color=on?"#fff":"";}});
+  DB.ref("game/useDefaultQuiz").on("value",s=>{
+    const on=s.val()!==false; const b=$("#dfQuizToggle");
+    if(b){b.textContent=on?"✅ 기본 60문항 포함 중 (클릭 시 제외)":"🚫 기본 60문항 제외 중 (클릭 시 포함)";
+      b.style.background=on?"":"#5c2430"; b.style.borderColor=on?"":"var(--red)";}
+  });
   function renderPlayers(){
     const rows=Object.entries(PCACHE).map(([uid,p])=>({uid,...p}));
     rows.sort((a,b)=>(b.score||0)-(a.score||0));
@@ -505,7 +513,7 @@ $("#xlsxGo").addEventListener("click",async()=>{
   toast(`엑셀 업로드 완료: ${ok}문항`);});
 $("#qUploadDefault").addEventListener("click",async()=>{
   if(!confirm("내장 60문항을 업로드할까요? (기존 유지, 추가)"))return;
-  const up={};DEFAULT_QUIZ.forEach(q=>up[q.id]=q);
+  const up={};DEFAULT_QUIZ.forEach(q=>up[q.id]={...q,isDefault:true});
   await DB.ref("quizzes").update(up);toast("기본 60문항 업로드 완료");});
 let qEditKey=null,PRESET=0,admTimerFired=true;
 function loadQuizEdit(k){
@@ -548,6 +556,13 @@ $("#qExport").addEventListener("click",async()=>{
   }).join("\n\n");
   try{ await navigator.clipboard.writeText(text||"(문항 없음)"); toast(`${arr.length}문항 복사됨 (읽기 쉬운 형식)`); }
   catch(e){ toast("복사 실패 — 브라우저 권한 확인",1); }});
+$("#dfQuizToggle").addEventListener("click",async()=>{
+  try{
+    const s=await DB.ref("game/useDefaultQuiz").get();
+    const cur=s.val()!==false; // 기본값 true(포함)
+    await DB.ref("game/useDefaultQuiz").set(!cur);
+    toast(!cur?"기본 60문항 제외 — 진행자 문항만 출제됩니다":"기본 60문항 포함 — 함께 출제됩니다");
+  }catch(e){toast("실패: "+e.message,1);}});
 $("#qClear").addEventListener("click",()=>{if(confirm("문제은행 전체 삭제?")){DB.ref("quizzes").remove();toast("전체 삭제됨");}});
 /* ---- 환수 관리 ---- */
 let selId=null;
