@@ -339,6 +339,7 @@ function boot(){
   DB.ref("blocks").on("value",s=>{ BLOCKS=s.val()||{}; renderPlayers();
     const ba=$("#blockAll"); if(ba){const on=!!BLOCKS._all;ba.textContent=on?"🔓 전체 차단 해제":"🚫 전체 환수획득 차단";ba.style.background=on?"#c0343f":"";ba.style.color=on?"#fff":"";}
   });
+  DB.ref("control/chatOff").on("value",s=>{const on=!!s.val();const b=$("#chatToggle");if(b){b.textContent=on?"🔓 채팅 허용":"💬 채팅 금지";b.style.background=on?"#c0343f":"";b.style.color=on?"#fff":"";}});
   function renderPlayers(){
     const rows=Object.entries(PCACHE).map(([uid,p])=>({uid,...p}));
     rows.sort((a,b)=>(b.score||0)-(a.score||0));
@@ -411,7 +412,6 @@ $("#noticeGo").addEventListener("click",()=>{
   DB.ref("feed").push({msg:"📣 "+(t||"진행자 공지"),ts:firebase.database.ServerValue.TIMESTAMP});
   toast("공지 발송 완료 (상단 고정 + 팝업)");});
 $("#noticeClear").addEventListener("click",()=>{DB.ref("announce").remove();toast("고정 공지 해제됨");});
-DB.ref("control/chatOff").on("value",s=>{const on=!!s.val();const b=$("#chatToggle");if(b){b.textContent=on?"🔓 채팅 허용":"💬 채팅 금지";b.style.background=on?"#c0343f":"";b.style.color=on?"#fff":"";}});
 $("#chatToggle").addEventListener("click",async()=>{
   try{const s=await DB.ref("control/chatOff").get();const cur=!!s.val();
     await DB.ref("control/chatOff").set(!cur);

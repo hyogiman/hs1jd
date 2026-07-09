@@ -609,7 +609,7 @@ function updateActionLocks(){
   const bs=$("#btnStart");if(bs)bs.disabled=!ex;
   const sim=$("#btnSim");if(sim)sim.disabled=!ex;
   document.querySelectorAll("#battleButtons .btn").forEach(b=>b.disabled=!bt);
-  document.querySelectorAll("#healList .btn").forEach(b=>b.disabled=!bt);
+  // 치유 버튼은 항상 활성화 — 단계/오픈 여부는 healGate에서 안내
 }
 function updateNavLocks(){
   document.querySelectorAll("nav button").forEach(b=>{
@@ -2003,7 +2003,7 @@ function bootUI(){
   if(!DEMO_MODE)$("#btnSim").style.display="none"; /* 실전에선 테스트 버튼 자동 숨김 */
   $("#chatGo").addEventListener("click",sendChat);
   $("#chatIn").addEventListener("keydown",e=>{if(e.key==="Enter")sendChat();});
-  addFeed(DEMO_MODE?"환수 원정대 v0.9 (로컬 데모) — 탐험을 시작하세요!":`<b>${dispSelf()}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
+  addFeed(DEMO_MODE?"환수 원정대 v0.9.1 (로컬 데모) — 탐험을 시작하세요!":`<b>${dispSelf()}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
 }
 fbInit();
 </script>
