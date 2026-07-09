@@ -626,7 +626,7 @@ function updateNavLocks(){
     if(v==="explore")lock=!canExplore();
     if(v==="battle")lock=!canBattle() && S.phase!=="lobby";
     if(v==="heal")lock=!canBattle();
-    if(v==="safari")lock=!canExplore()||!safariOpen();
+    if(v==="safari")lock=!safariOpen();
     b.classList.toggle("lockdim",lock);});
 }
 function applyPhase(ph,timerEnd){
@@ -1635,11 +1635,11 @@ function renderSafariGate(){
     <div class="sf-status">
       <div class="pill"><b>${cfg.dur}초</b><span>체류 시간</span></div>
       <div class="pill"><b>${cfg.balls}개</b><span>사파리볼</span></div>
-      <div class="pill"><b>${sfOccCount()}/${cfg.cap}</b><span>현재 입장</span></div>
-      <div class="pill"><b>${left}회</b><span>남은 입장</span></div>
+      <div class="pill"><b>${sfOccCount()}/${cfg.cap}</b><span>입장 인원</span></div>
+      <div class="pill"><b>${left}회</b><span>잔여 횟수</span></div>
     </div>
-    <button class="btn gold" id="sfEnterBtn" ${(!open||left<=0||!canExplore())?"disabled":""}>🥾 입장하기</button>
-    <div class="sf-hint">입장 시 간단한 퀴즈 1문제를 통과해야 합니다.${!canExplore()?"<br>지금은 사파리 탐험 시간이 아닙니다.":""}</div>
+    <button class="btn gold" id="sfEnterBtn" ${(!open||left<=0)?"disabled":""}>🥾 입장하기</button>
+    <div class="sf-hint">입장 시 간단한 퀴즈 1문제를 통과해야 합니다.${left<=0?"<br>입장 가능 횟수를 모두 사용했습니다.":""}</div>
   </div>`;
   const b=$("#sfEnterBtn"); if(b)b.addEventListener("click",safariRequestEntry);
 }
@@ -1662,7 +1662,6 @@ function safariRelease(){
 }
 
 function safariRequestEntry(){
-  if(!canExplore()){toast("지금은 사파리존 입장 시간이 아닙니다");return;}
   if(!safariOpen()){toast("사파리존이 아직 열리지 않았습니다");return;}
   if(SF_ENTRY_LIMIT-SAFARI_ENTRIES<=0){toast("입장 가능 횟수를 모두 사용했습니다");return;}
   const cfg=sfCfg();
@@ -1752,7 +1751,7 @@ function safariStart(cfg){
   clearInterval(SAFARI.timerIv);
   SAFARI.timerIv=setInterval(()=>{
     if(!SAFARI.active){clearInterval(SAFARI.timerIv);return;}
-    if(!canExplore()||!safariOpen()){safariExit("closed");return;}
+    if(!safariOpen()){safariExit("closed");return;}
     const r=Math.max(0,Math.floor((SAFARI.tEnd-Date.now())/1000));
     safariUpdHud();
     if(r<=0)safariExit("time");
@@ -1776,7 +1775,7 @@ function safariExit(reason){
     <div style="font-size:2.6rem;">🏕️</div>
     <div class="enc-name">${rsn}</div>
     <div style="margin:12px 0;font-size:.95rem;">이번 탐험에서 <b style="color:var(--gold)">${SAFARI.caught}마리</b> 포획!<br>
-    <span style="color:var(--sub);font-size:.82rem;">사파리볼 ${SAFARI.attempts}개 사용 · 남은 입장 ${left}회</span></div></div>
+    <span style="color:var(--sub);font-size:.82rem;">사파리볼 ${SAFARI.attempts}개 사용 · 잔여 횟수 ${left}회</span></div></div>
     <button class="btn gold" onclick="document.getElementById('mDetail').classList.remove('on')">확인</button>`;
   $("#mDetail").classList.add("on");
   addFeed(`🏕️ 사파리존 종료 — ${SAFARI.caught}마리 포획`);
