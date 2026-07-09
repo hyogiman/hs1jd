@@ -215,6 +215,9 @@ nav button.lockdim{opacity:.35;}
 .pin-key.pin-fn{color:#ff9b6b;font-size:1.5rem;}
 .pin-key.pin-go{background:#2f6fb0;color:#fff;border:none;font-size:1.15rem;}
 .pin-key.pin-go:active{background:#3f86d0;color:#fff;}
+@keyframes joinshake{0%,100%{transform:translateX(0);}20%,60%{transform:translateX(-7px);}40%,80%{transform:translateX(7px);}}
+#joinCode.err{border-color:#ff6b6b !important;box-shadow:0 0 0 3px rgba(255,107,107,.2);}
+.shakeit{animation:joinshake .4s;}
 </style>
 </head>
 <body>
@@ -227,6 +230,7 @@ nav button.lockdim{opacity:.35;}
   <input id="joinName" maxlength="10" placeholder="성명 (예: 정인혁)">
   <input id="joinTitle" maxlength="12" placeholder="직위 (예: 책임)" style="margin-top:8px;">
   <input id="joinCode" maxlength="10" placeholder="입장코드 (진행자 안내)" style="margin-top:8px;">
+  <div id="joinErr" style="display:none;color:#ff8a8a;font-size:.82rem;margin-top:8px;font-weight:600;"></div>
   <button class="btn gold" id="joinBtn">모험 시작!</button>
 </div>
 
@@ -494,12 +498,15 @@ function hydrate(d){
 }
 $("#joinBtn").addEventListener("click",async()=>{
   const n=$("#joinName").value.trim(),t=$("#joinTitle").value.trim(),c=$("#joinCode").value.trim();
+  const errEl=$("#joinErr"), codeEl=$("#joinCode");
+  const showErr=(msg)=>{ if(errEl){errEl.textContent=msg;errEl.style.display="block";} if(codeEl){codeEl.classList.add("err");codeEl.classList.remove("shakeit");void codeEl.offsetWidth;codeEl.classList.add("shakeit");} };
+  if(errEl)errEl.style.display="none"; if(codeEl)codeEl.classList.remove("err");
   if(!n){toast("성명을 입력하세요");return;}
   if(!t){toast("직위를 입력하세요");return;}
   try{
     const snap=await DB.ref("game/entryCode").get();
     const ec=snap.exists()?String(snap.val()):"";
-    if(ec&&c!==ec){toast("입장코드가 올바르지 않습니다");return;}
+    if(ec&&c!==ec){ showErr(c?"❌ 입장코드가 올바르지 않습니다. 진행자에게 확인해 주세요.":"❌ 입장코드를 입력해 주세요. (진행자 안내)"); return; }
   }catch(e){toast("서버 연결 실패 — 잠시 후 다시 시도");return;}
   S.name=n;S.title=t;$("#joinOv").classList.remove("on");savePlayer();bootUI();
 });
@@ -608,14 +615,15 @@ function updateActionLocks(){
   const ex=canExplore(),bt=canBattle();
   const bs=$("#btnStart");if(bs)bs.disabled=!ex;
   const sim=$("#btnSim");if(sim)sim.disabled=!ex;
-  document.querySelectorAll("#battleButtons .btn").forEach(b=>b.disabled=!bt);
+  document.querySelectorAll("#battleButtons .btn:not(#btnBot)").forEach(b=>b.disabled=!bt);
   // 치유 버튼은 항상 활성화 — 단계/오픈 여부는 healGate에서 안내
 }
 function updateNavLocks(){
   document.querySelectorAll("nav button").forEach(b=>{
     const v=b.dataset.v;let lock=false;
     if(v==="explore")lock=!canExplore();
-    if(v==="battle"||v==="heal")lock=!canBattle();
+    if(v==="battle")lock=!canBattle() && S.phase!=="lobby";
+    if(v==="heal")lock=!canBattle();
     if(v==="safari")lock=!canExplore()||!safariOpen();
     b.classList.toggle("lockdim",lock);});
 }
@@ -624,7 +632,7 @@ function applyPhase(ph,timerEnd){
   if(timerEnd!==S.timerEnd){S._timerFired=false;S._timerArmed=false;}
   S.phase=ph;S.timerEnd=timerEnd||0;
   $("#phaseBanner").querySelector("span").innerHTML=PHASE_LABEL[ph]||ph;
-  updateNavLocks();updateActionLocks();
+  updateNavLocks();renderBattleButtons();updateActionLocks();
   if(!first&&prev!==ph&&PHASE_POPUP[ph]){
     const[t,d]=PHASE_POPUP[ph];
     $("#detailSheet").innerHTML=`<div class="grip"></div>
@@ -1054,12 +1062,18 @@ document.getElementById("mEnc").addEventListener("click",e=>{if(e.target.id==="m
 let B=null;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function renderBattleButtons(){
-  $("#battleButtons").innerHTML=DEMO_MODE
-    ?`<button class="btn gold" id="btnBot">🤖 연습 배틀 (봇과 대전)</button>
-      <div class="lock-note">Firebase 설정을 넣으면 실전 코드 매칭이 활성화됩니다.</div>`
-    :`<button class="btn gold" id="btnHost">🔢 배틀 코드 만들기 (내가 방장)</button>
-      <button class="btn blue" id="btnJoin">🤝 코드 입력해 참가</button>
-      <button class="btn ghost sm" id="btnBot">🤖 연습 배틀 (봇)</button>`;
+  if(DEMO_MODE){
+    $("#battleButtons").innerHTML=`<button class="btn gold" id="btnBot">🤖 연습 배틀 (봇과 대전)</button>
+      <div class="lock-note">Firebase 설정을 넣으면 실전 코드 매칭이 활성화됩니다.</div>`;
+  } else if(S.phase==="lobby"){
+    $("#battleButtons").innerHTML=`<button class="btn gold" id="btnBot">🤖 연습 배틀 (봇과 대전)</button>
+      <div class="lock-note">지금은 대기 시간 — 봇과 미리 연습해 보세요! 실전 배틀은 2라운드에 열립니다.</div>`;
+  } else if(canBattle()){
+    $("#battleButtons").innerHTML=`<button class="btn gold" id="btnHost">🔢 배틀 코드 만들기 (내가 방장)</button>
+      <button class="btn blue" id="btnJoin">🤝 코드 입력해 참가</button>`;
+  } else {
+    $("#battleButtons").innerHTML=`<div class="lock-note">⚔️ 실전 배틀은 2라운드에 열립니다.</div>`;
+  }
   const bb=$("#btnBot");if(bb)bb.addEventListener("click",startBotBattle);
   const bh=$("#btnHost");if(bh)bh.addEventListener("click",hostBattle);
   const bj=$("#btnJoin");if(bj)bj.addEventListener("click",joinBattleUI);
@@ -1078,11 +1092,21 @@ function botRoll(){
   const m=pool[Math.floor(Math.random()*pool.length)];
   return {monsterId:m.id,hp:m.hp,name:BOT_NAMES[Math.floor(Math.random()*BOT_NAMES.length)]};
 }
+function loanerRoster(){
+  // 진행자가 '연습봇 제공' 체크한 환수들 중에서만 대여. 없으면 기본 C/B 6종.
+  let pool=MONSTERS.filter(m=>!m.disabled&&m.botOffer&&m.category!=="사신수");
+  if(!pool.length){
+    pool=MONSTERS.filter(m=>!m.disabled&&m.wildSpawn&&(m.grade==="C"||m.grade==="B")&&m.category!=="사신수")
+      .sort(()=>Math.random()-0.5).slice(0,6);
+  }
+  return pool.map(m=>({uid:"loan:"+m.id,monsterId:m.id,hp:m.hp,wins:0,loaner:true}));
+}
 function startBotBattle(){
-  if(!preBattleCheck())return;
   const bot=botRoll();
-  B={mode:"bot",opp:{uid:"bot:"+bot.name,name:bot.name,monsterId:bot.monsterId,hp:bot.hp,maxHp:bot.hp},
-     mine:null,slots:[null,null,null],uiPhase:"pick",dmgDealt:0,dmgTaken:0,winA:0,winB:0,done:false};
+  if(!bot){toast("연습용 봇이 준비되지 않았습니다");return;}
+  B={mode:"bot",practice:true,opp:{uid:"bot:"+bot.name,name:bot.name,monsterId:bot.monsterId,hp:bot.hp,maxHp:bot.hp},
+     mine:null,slots:[null,null,null],uiPhase:"pick",dmgDealt:0,dmgTaken:0,winA:0,winB:0,done:false,
+     _loaners:loanerRoster()};
   renderBattlePick();$("#mBattle").classList.add("on");
 }
 async function hostBattle(){
@@ -1190,10 +1214,11 @@ function watchRoom(){
   B.unsub=()=>B.ref.off("value",cb);
 }
 function renderBattlePick(){
-  const roster=S.collection.filter(alive);
+  const roster=(B.mode==="bot"&&B._loaners)?B._loaners:S.collection.filter(alive);
   const oppName=B.mode==="bot"?B.opp.name:(B.oppInfo?B.oppInfo.name:"상대");
   $("#battleSheet").innerHTML=`<div class="grip"></div>
     <div class="enc-title">⚔️ ${oppName}와(과)의 배틀</div>
+    ${B.practice?'<div style="text-align:center;background:rgba(90,169,230,.14);border:1px solid #35507a;border-radius:10px;padding:6px 8px;margin-bottom:8px;font-size:.78rem;color:#a9c8ee;">🎯 연습 대결 — 아래 <b>대여 환수</b> 중 하나로 출전하세요. 점수·기록에는 반영되지 않아요.</div>':""}
     <div class="vs-wrap">
       <div class="mon-card"><div class="mc-art"><div class="ph">❔</div></div>
       <div class="mc-nm">???</div><div class="mc-hp">상대 환수는 비공개!</div></div>
@@ -1206,12 +1231,12 @@ function renderBattlePick(){
       const m=byId(c.monsterId),tc=TYPE_COLOR[m.type];
       return `<div class="inst" data-uid="${c.uid}">
       <div class="thumb" style="--tc:${tc}">${artHTML(m)}</div>
-      <div class="info"><div class="nm">${m.name} <span style="color:${GRADE_COLOR[m.grade]};font-size:.72rem;">${m.grade}</span></div>
-      <div class="meta">HP ${c.hp}/${m.hp} · 승수 ${c.wins}</div>${hpBarHTML(c.hp,m.hp)}</div></div>`;}).join("")}</div>
+      <div class="info"><div class="nm">${m.name} <span style="color:${GRADE_COLOR[m.grade]};font-size:.72rem;">${m.grade}</span>${c.loaner?' <span style="color:#6fb0e3;font-size:.68rem;">대여</span>':""}</div>
+      <div class="meta">HP ${c.hp}/${m.hp}${c.loaner?"":` · 승수 ${c.wins}`}</div>${hpBarHTML(c.hp,m.hp)}</div></div>`;}).join("")}</div>
     <button class="btn ghost sm" id="btnBtCancel">배틀 나가기</button>`;
   $("#battleSheet").querySelectorAll("#pickList .inst").forEach(el=>{
     el.addEventListener("click",()=>{
-      B.mine=S.collection.find(c=>c.uid===el.dataset.uid);
+      B.mine=(B.mode==="bot"&&B._loaners)?B._loaners.find(c=>c.uid===el.dataset.uid):S.collection.find(c=>c.uid===el.dataset.uid);
       if(B.mode==="net"){
         B.ref.child("pick_"+B.role).set({uid:UID,name:dispSelf(),instUid:B.mine.uid,monsterId:B.mine.monsterId,hp:B.mine.hp,wins:B.mine.wins});
       }else renderBattleCommit();
@@ -1359,6 +1384,21 @@ function finishBattle(fromSd){
   else{if(!fromSd){suddenDeath();return;}result="draw";}
   B.done=true;
   B.mine.hp=Math.max(0,B.mine.hp);
+  if(B.practice){
+    const resTxt=result==="win"?"🏆 연습 승리!":result==="lose"?"연습 패배…":"무승부";
+    if(B.unsub)B.unsub();
+    $("#revealArea").insertAdjacentHTML("beforeend",`
+      <div style="text-align:center;margin-top:10px;">
+        <div class="enc-name">${resTxt}</div>
+        <div style="color:var(--sub);font-size:.8rem;margin-top:4px;">연습 대결이라 점수·기록·환수 상태에는 반영되지 않아요.</div>
+        ${myFaint?`<div style="color:#ff8a8a;font-size:.85rem;margin-top:4px;">💫 대여 환수가 기절했지만 연습이니 걱정 마세요!</div>`:""}
+        ${opFaint?`<div style="color:#7ee08a;font-size:.85rem;">상대 ${om.name}이(가) 기절했다!</div>`:""}
+      </div>
+      <button class="btn gold" id="btnBtClose2">닫기</button>`);
+    $("#btnBtClose2").addEventListener("click",closeBattle);
+    $("#battleSheet").scrollTop=$("#battleSheet").scrollHeight;
+    return;
+  }
   let pts=0,rows=[];
   const oppKey=B.opp.uid;
   if(result==="win"){
@@ -1565,8 +1605,8 @@ function sfRoundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(
 
 /* ---- 등장 확률 (사파리: B~A 2배 · 모래밭은 희귀↑) ---- */
 function safariRollGrade(rare){
-  const table = rare ? [["C",0.14],["B",0.30],["A",0.34],["S",0.22]]
-                     : [["C",0.38],["B",0.34],["A",0.20],["S",0.08]];
+  // 수풀·모래밭 동일 확률 (S는 희귀). 모래밭 차별점은 등장 풀(사파리 한정종)에서만 유지.
+  const table=[["C",0.55],["B",0.28],["A",0.13],["S",0.04]];
   const r=Math.random();let a=0;for(const[g,p]of table){a+=p;if(r<a)return g;}return "C";
 }
 function safariRollMonster(rare){
@@ -1860,7 +1900,7 @@ function safariArrive(){
   const t=SF_MAP[SAFARI.ty][SAFARI.tx];
   if((t===1||t===5)&&!SAFARI._enc&&!encBlocked()){
     const rare=(t===5);
-    if(Math.random()<(rare?0.30:0.18)){ safariEncounter(rare); return; }
+    if(Math.random()<0.20){ safariEncounter(rare); return; }
   }
   if(SAFARI.held&&!SAFARI._enc)safariStep(SAFARI.held);
 }
@@ -2003,7 +2043,7 @@ function bootUI(){
   if(!DEMO_MODE)$("#btnSim").style.display="none"; /* 실전에선 테스트 버튼 자동 숨김 */
   $("#chatGo").addEventListener("click",sendChat);
   $("#chatIn").addEventListener("keydown",e=>{if(e.key==="Enter")sendChat();});
-  addFeed(DEMO_MODE?"환수 원정대 v0.9.1 (로컬 데모) — 탐험을 시작하세요!":`<b>${dispSelf()}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
+  addFeed(DEMO_MODE?"환수 원정대 v0.9.4 (로컬 데모) — 탐험을 시작하세요!":`<b>${dispSelf()}</b>님, 환수 원정대에 오신 것을 환영합니다!`);
 }
 fbInit();
 </script>

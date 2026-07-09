@@ -180,7 +180,7 @@ th{color:var(--sub);font-weight:600;}
     <div id="qList" style="max-height:380px;overflow-y:auto;"></div></div>
 </div>
 
-<!-- 환수 관리 --> 
+<!-- 환수 관리 -->
 <div class="tabview" id="t-mon">
   <div class="grid2">
     <div class="card">
@@ -205,7 +205,8 @@ th{color:var(--sub);font-weight:600;}
           <input id="mEvoWins" type="number" placeholder="필요 승수" style="width:110px;"></div>
         <div class="row2">
           <label class="stat"><input type="checkbox" id="mWild" style="width:auto;"> 야생 출현</label>
-          <label class="stat"><input type="checkbox" id="mSafari" style="width:auto;"> 사파리 한정</label></div>
+          <label class="stat"><input type="checkbox" id="mSafari" style="width:auto;"> 사파리 한정</label>
+          <label class="stat"><input type="checkbox" id="mBotOffer" style="width:auto;"> 연습'봇' 제공</label></div>
         <div class="row2" style="margin-top:8px;">
           <button class="gold" id="mSave">💾 저장 (전 참가자 즉시 반영)</button>
           <button id="mRevert">원본 복원</button>
@@ -583,7 +584,7 @@ function openEdit(id){
   $("#sk2n").value=sk[2].name||"";$("#sk2a").value=sk[2].atk||10;
   $("#mDex").value=m.dex||"";
   $("#mEvoTo").value=m.evolveTo||"";$("#mEvoWins").value=m.evolveWins||"";
-  $("#mWild").checked=m.wildSpawn!==false;$("#mSafari").checked=!!m.safariOnly;
+  $("#mWild").checked=m.wildSpawn!==false;$("#mSafari").checked=!!m.safariOnly;$("#mBotOffer").checked=!!m.botOffer;
 }
 $("#mSave").addEventListener("click",async()=>{
   if(!selId)return;
@@ -593,7 +594,7 @@ $("#mSave").addEventListener("click",async()=>{
             {name:$("#sk1n").value.trim(),rps:"바위",atk:+$("#sk1a").value||10},
             {name:$("#sk2n").value.trim(),rps:"보",atk:+$("#sk2a").value||10}],
     evolveTo:$("#mEvoTo").value.trim()||null,evolveWins:+$("#mEvoWins").value||null,
-    wildSpawn:$("#mWild").checked,safariOnly:$("#mSafari").checked,disabled:false};
+    wildSpawn:$("#mWild").checked,safariOnly:$("#mSafari").checked,botOffer:$("#mBotOffer").checked,disabled:false};
   if(!data.name){toast("이름을 입력하세요",1);return;}
   const isCustom=CUS[selId]&&!BASE_MONSTERS.find(b=>b.id===selId);
   await DB.ref((isCustom?"customMonsters/":"monsterOverrides/")+selId).update(data);
@@ -617,7 +618,7 @@ $("#newGo").addEventListener("click",async()=>{
   const hp={C:30,B:50,A:75,S:105}[grade];
   await DB.ref("customMonsters/"+id).set({id,name,type,grade,hp,category:"일반",
     skills:[{name:"스킬1",rps:"가위",atk:12},{name:"스킬2",rps:"바위",atk:12},{name:"스킬3",rps:"보",atk:12}],
-    dex:"(도감 설명을 입력하세요)",evolveTo:null,evolveWins:null,wildSpawn:true,safariOnly:false,imageUrl:null});
+    dex:"(도감 설명을 입력하세요)",evolveTo:null,evolveWins:null,wildSpawn:true,safariOnly:false,botOffer:false,imageUrl:null});
   $("#newName").value="";toast(`No.${id} ${name} 추가됨 — 목록에서 편집하세요`);});
 /* ---- 이미지 ---- */
 $("#imgGo").addEventListener("click",async()=>{
