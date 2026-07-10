@@ -293,7 +293,11 @@ nav button.lockdim{opacity:.35;}
       <div id="battleButtons"></div>
       <div class="desc">블라인드 픽: 상대 환수를 모른 채 내 환수를 고르고, 스킬 3개를 비밀리에 제출합니다. 슬롯별 동시 공개!</div>
     </div>
-    <div class="card"><h3>📜 배틀 전적</h3>
+    <div class="card"><h3>🎯 지금 배틀 가능한 대원 <span class="tag" id="readyCnt"></span></h3>
+      <div style="font-size:.72rem;color:var(--sub);margin-bottom:6px;">사파리존 입장 중이거나 배틀 중인 대원은 제외됩니다 · 아이콘은 보유 환수 타입</div>
+      <div id="battleReady"><div style="font-size:.8rem;color:var(--sub);">불러오는 중…</div></div>
+      <div style="border-top:1px solid var(--line);margin:12px 0 10px;"></div>
+      <h3 style="margin-bottom:8px;">📜 배틀 전적</h3>
       <div id="battleLog"><div style="font-size:.8rem;color:var(--sub);">아직 배틀 기록이 없습니다.</div></div></div>
   </section>
 
@@ -529,7 +533,7 @@ function globalFeed(msg){
   DB.ref("feed").push({msg,uid:UID,type:"event",ts:firebase.database.ServerValue.TIMESTAMP});
 }
 function attachListeners(){
-  DB.ref("players").on("value",s=>{PLAYERS=s.val()||{};renderRank();});
+  DB.ref("players").on("value",s=>{PLAYERS=s.val()||{};renderRank();renderBattleReady();});
   DB.ref("feed").limitToLast(25).on("child_added",s=>{const v=s.val()||{};if(v.msg)onGlobalFeed(v);});
   DB.ref("chat").limitToLast(30).on("child_added",s=>{const v=s.val()||{};if(!v.msg)return;
     S.chat.push({name:v.name||"?",msg:v.msg,t:fmtTs(v.ts)});if(S.chat.length>40)S.chat.shift();renderFeeds();});
@@ -590,7 +594,8 @@ function attachListeners(){
   DB.ref("quizzes").on("value",s=>{RAW_QUIZZES=s.val(); applyQuizPool();});
   DB.ref("game/useDefaultQuiz").on("value",s=>{S.useDefaultQuiz = s.val()!==false; applyQuizPool();});
   DB.ref("stations/heal").on("value",s=>{HEAL_STATION=s.val();renderHealGateNote();});
-  DB.ref("stations/safari").on("value",s=>{SAFARI_STATION=s.val();updateNavLocks();if(!SAFARI.active)renderSafariGate();});
+  DB.ref("stations/safari").on("value",s=>{SAFARI_STATION=s.val();updateNavLocks();if(!SAFARI.active)renderSafariGate();renderBattleReady();});
+  DB.ref("battles").on("value",s=>{BATTLES_LIVE=s.val()||{};renderBattleReady();});
   DB.ref("blocks/_all").on("value",s=>{S.blockedAll=!!s.val();});
   DB.ref("blocks/"+UID).on("value",s=>{S.blocked=!!s.val();});
   DB.ref("uniqueClaims").on("value",s=>{CLAIMED_UNIQUES=s.val()||{};if(document.getElementById("dexContent"))renderDex();});
@@ -1349,7 +1354,7 @@ async function revealOne(mm,om,mySk,opSk,slotNo){
   if(B.mine.hp<=0||B.opp.hp<=0){await sleep(650);finishBattle(false);return"end";}
   return"ok";
 }
-const SD_MAX=5; /* 서든데스 최대 라운드 */
+/* 서든데스는 결판(승수 차이 또는 기절)이 날 때까지 무제한 진행 */
 /* 서든데스 스킬 선택 UI — 내가 고른 스킬 인덱스를 반환 */
 function pickSdUI(mm){
   return new Promise(res=>{
@@ -1396,9 +1401,9 @@ async function suddenDeath(){
   const mm=byId(B.mine.monsterId),om=byId(B.opp.monsterId);
   B.sdActive=true;
 
-  /* --- 봇/연습 모드: 로컬에서 즉시 판정 --- */
+  /* --- 봇/연습 모드: 로컬에서 즉시 판정, 결판까지 반복 --- */
   if(B.mode!=="net"){
-    for(let n=0;n<SD_MAX;n++){
+    for(let n=0;;n++){
       const myPick=await pickSdUI(mm);
       const opPick=Math.floor(Math.random()*3);
       const j=judgeSlot(mm.skills[myPick],om.skills[opPick],mm.type,om.type);
@@ -1408,14 +1413,13 @@ async function suddenDeath(){
       if(B.winA!==B.winB){B.sdActive=false;finishBattle(true);return;}
       await sleep(400);
     }
-    B.sdActive=false;finishBattle(true);return;
   }
 
   /* --- 네트워크 모드: 방장(H)이 단독 판정, 게스트(G)는 결과를 따름 --- */
   // 이전 잔여 데이터 정리 (방장만 수행)
   if(B.role==="h"){ try{ await B.ref.child("sd").remove(); }catch(e){} }
 
-  for(let n=0;n<SD_MAX;n++){
+  for(let n=0;;n++){
     // 1) 내 선택을 올린다
     const myPick=await pickSdUI(mm);
     await B.ref.child("sd/pick_"+B.role+"/"+n).set(myPick);
@@ -1433,13 +1437,11 @@ async function suddenDeath(){
         winForMe:j.win==="A"?"me":j.win==="B"?"opp":"draw",dmgToMe:j.dmgA,dmgToOpp:j.dmgB});
       const faint=(B.mine.hp<=0||B.opp.hp<=0);
       const decided=faint||(B.winA!==B.winB);
-      const isFinal=decided||(n===SD_MAX-1);
       // 게스트가 그대로 그릴 수 있도록 'H 기준' 결과를 기록 (G는 부호를 뒤집어 해석)
       await B.ref.child("sd/result/"+n).set({
-        hSk:myPick, gSk:gp, hWin:j.win, dmgH:j.dmgA, dmgG:j.dmgB, final:isFinal
+        hSk:myPick, gSk:gp, hWin:j.win, dmgH:j.dmgA, dmgG:j.dmgB, final:decided
       });
       if(decided){ await sleep(650); B.sdActive=false; finishBattle(true); return; }
-      if(n===SD_MAX-1){ B.sdActive=false; finishBattle(true); return; }
       await sleep(400);
     } else {
       // 게스트: 방장이 기록한 결과를 기다려 그대로 반영 (스스로 판정하지 않음)
@@ -1454,7 +1456,6 @@ async function suddenDeath(){
       await sleep(400);
     }
   }
-  B.sdActive=false; finishBattle(true);
 }
 function finishBattle(fromSd){
   const mm=byId(B.mine.monsterId),om=byId(B.opp.monsterId);
@@ -1546,6 +1547,47 @@ function renderBattleLog(){
     :'<div style="font-size:.8rem;color:var(--sub);margin-top:6px;">해당 기록이 없습니다.</div>'}`;
   $("#battleLog").querySelectorAll("[data-bf]").forEach(b=>
     b.addEventListener("click",()=>{S.blogFilter=b.dataset.bf;renderBattleLog();}));
+}
+/* ==================== 배틀 가능 대원 목록 ==================== */
+let BATTLES_LIVE={};
+const READY_ICON_ORDER=["불","물","풀","철","돌","풍","에스퍼","사신수"];
+function renderBattleReady(){
+  const box=document.getElementById("battleReady");if(!box)return;
+  if(DEMO_MODE){box.innerHTML='<div style="font-size:.8rem;color:var(--sub);">로컬 데모에서는 표시되지 않습니다.</div>';const c=document.getElementById("readyCnt");if(c)c.textContent="";return;}
+  // 1) 바쁜 사람 집합: 사파리존 입장자 + 배틀 방(호스트/게스트)
+  const busy=new Set();
+  const occ=(SAFARI_STATION&&SAFARI_STATION.occ)?Object.keys(SAFARI_STATION.occ):[];
+  occ.forEach(u=>busy.add(u));
+  for(const code in BATTLES_LIVE){
+    const r=BATTLES_LIVE[code];if(!r)continue;
+    if(r.host&&r.host.uid)busy.add(r.host.uid);
+    if(r.guest&&r.guest.uid)busy.add(r.guest.uid);
+  }
+  // 2) 나와 바쁜 사람을 제외한 참가자 목록
+  const rows=Object.entries(PLAYERS||{})
+    .filter(([uid,p])=>uid!==UID&&p&&p.name&&!busy.has(uid))
+    .map(([uid,p])=>{
+      // 보유 환수에서 타입 집합 도출 (사신수는 카테고리로 별도)
+      const owned=new Set();
+      (p.collection||[]).forEach(c=>{
+        const m=byId(c.monsterId);if(!m)return;
+        if(m.category==="사신수")owned.add("사신수");else owned.add(m.type);
+      });
+      return {uid,name:(p.name||"?")+(p.title?" "+p.title:""),owned,upd:p.upd||0};
+    })
+    .sort((a,b)=>b.upd-a.upd);
+  const c=document.getElementById("readyCnt");if(c)c.textContent=rows.length+"명";
+  if(!rows.length){box.innerHTML='<div style="font-size:.8rem;color:var(--sub);">지금 배틀 가능한 대원이 없습니다.</div>';return;}
+  box.innerHTML=rows.map(r=>{
+    const icons=READY_ICON_ORDER.map(t=>{
+      const has=r.owned.has(t);
+      const ic=t==="사신수"?"🏛️":TYPE_EMOJI[t];
+      return `<span style="font-size:.85rem;${has?"":"opacity:.16;filter:grayscale(1);"}" title="${t}${has?" 보유":" 미보유"}">${ic}</span>`;
+    }).join("");
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid #ffffff0d;">
+      <div style="flex:1;font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name}</div>
+      <div style="display:flex;gap:3px;">${icons}</div></div>`;
+  }).join("");
 }
 function closeBattle(){
   if(B&&B.unsub)try{B.unsub();}catch(e){}
