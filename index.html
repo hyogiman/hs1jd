@@ -1392,9 +1392,10 @@ function finishBattle(fromSd){
   else if(myFaint)result="lose";
   else if(B.winA>B.winB)result="win";
   else if(B.winB>B.winA)result="lose";
-  else if(B.dmgDealt>B.dmgTaken)result="win";
-  else if(B.dmgDealt<B.dmgTaken)result="lose";
-  else{if(!fromSd){suddenDeath();return;}result="draw";}
+  // 슬롯 승수가 같으면(예: 1승1무1패) 피해량으로 가르지 않고 서든데스로 결판.
+  // 단, 서든데스까지 마친 뒤에도 승수가 같으면 진짜 백중지세로 보고 무승부 처리.
+  else if(!fromSd){suddenDeath();return;}
+  else result="draw";
   B.done=true;
   B.mine.hp=Math.max(0,B.mine.hp);
   if(B.practice){
