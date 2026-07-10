@@ -1202,6 +1202,9 @@ function watchRoom(){
     const r=s.val();
     if(!r){toast("배틀이 종료/취소되었습니다");closeBattle();return;}
     B.room=r;
+    // 서든데스 진행 중에는 sd_* 하위 변경으로 이 리스너가 발화하더라도
+    // 픽/커밋/공개 단계 재판정을 하지 않는다(서든데스 전용 리스너와의 경쟁 방지).
+    if(B.sdActive)return;
     const opKey=B.role==="h"?"g":"h";
     B.oppInfo=B.role==="h"?r.guest:r.host;
     const myPick=r["pick_"+B.role],opPick=r["pick_"+opKey];
@@ -1362,12 +1365,24 @@ function pickSdUI(mm){
 function getOppSd(n){
   if(B.mode!=="net")return Promise.resolve(Math.floor(Math.random()*3));
   return new Promise(res=>{
-    const ref=B.ref.child("sd_"+(B.role==="h"?"g":"h")+"/"+n);
-    const cb=ref.on("value",s=>{if(s.val()!=null){ref.off("value",cb);res(s.val());}});
+    const oppRole=(B.role==="h"?"g":"h");
+    const ref=B.ref.child("sd_"+oppRole+"/"+n);
+    let done=false;
+    const handler=s=>{
+      const v=s.val();
+      if(v==null||done)return;   // 값이 아직 없으면 계속 대기, 이미 처리했으면 무시
+      done=true;
+      ref.off("value",handler);  // 이 라운드 리스너만 정확히 해제(다음 라운드와 섞이지 않도록)
+      res(v);
+    };
+    ref.on("value",handler,()=>{ if(!done){done=true;res(Math.floor(Math.random()*3));} });
   });
 }
 async function suddenDeath(){
   const mm=byId(B.mine.monsterId),om=byId(B.opp.monsterId);
+  B.sdActive=true;
+  // 이전에 남아있을 수 있는 서든데스 데이터를 깨끗이 비우고 시작(오래된 값 오인 방지).
+  if(B.mode==="net"){ try{ await B.ref.child("sd_h").remove(); await B.ref.child("sd_g").remove(); }catch(e){} }
   for(let n=0;n<5;n++){
     const myPick=await pickSdUI(mm);
     if(B.mode==="net"){
@@ -1377,10 +1392,11 @@ async function suddenDeath(){
     const opPick=await getOppSd(n);
     const w=document.getElementById("sdWait");if(w)w.remove();
     const r=await revealOne(mm,om,myPick,opPick,"SD");
-    if(r==="end")return;
-    if(B.winA!==B.winB){finishBattle(true);return;}
+    if(r==="end"){B.sdActive=false;return;}
+    if(B.winA!==B.winB){B.sdActive=false;finishBattle(true);return;}
     await sleep(400);
   }
+  B.sdActive=false;
   finishBattle(true);
 }
 function finishBattle(fromSd){
@@ -1397,6 +1413,7 @@ function finishBattle(fromSd){
   else if(!fromSd){suddenDeath();return;}
   else result="draw";
   B.done=true;
+  B.sdActive=false;
   B.mine.hp=Math.max(0,B.mine.hp);
   if(B.practice){
     const resTxt=result==="win"?"🏆 연습 승리!":result==="lose"?"연습 패배…":"무승부";
