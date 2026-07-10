@@ -120,6 +120,8 @@ nav button.on{color:var(--ink);}nav button.on .ic{filter:none;transform:translat
 .vs-wrap{display:flex;flex-wrap:nowrap;gap:8px;align-items:stretch;margin:6px 0 12px;}
 .vs-wrap .mon-card{flex:1 1 0;}
 .mon-card{flex:1;background:var(--panel2);border:1.5px solid var(--line);border-radius:14px;padding:10px;text-align:center;min-width:0;}
+.mon-card.side-mine{background:linear-gradient(165deg,rgba(90,169,230,.16),var(--panel2));border-color:#3d6a99;}
+.mon-card.side-opp{background:linear-gradient(165deg,rgba(242,84,45,.14),var(--panel2));border-color:#8a4634;}
 .mon-card .mc-owner{font-size:.72rem;font-weight:700;margin-bottom:6px;padding:2px 8px;border-radius:99px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%;}
 .mon-card .mc-owner.opp{background:rgba(242,84,45,.16);color:#ff9d7a;}
 .mon-card .mc-owner.mine{background:rgba(90,169,230,.18);color:#8ec5f0;}
@@ -350,10 +352,10 @@ nav button.lockdim{opacity:.35;}
 <nav>
   <button data-v="home" class="on"><span class="ic">🏠</span>홈</button>
   <button data-v="explore"><span class="ic">🧭</span>탐험</button>
-  <button data-v="dex"><span class="ic">📖</span>도감</button>
-  <button data-v="battle"><span class="ic">⚔️</span>배틀</button>
   <button data-v="safari"><span class="ic">🏕️</span>사파리</button>
+  <button data-v="battle"><span class="ic">⚔️</span>배틀</button>
   <button data-v="heal"><span class="ic">💧</span>치유</button>
+  <button data-v="dex"><span class="ic">📖</span>도감</button>
 </nav>
 
 <div class="modal" id="mEnc"><div class="sheet" id="encSheet"></div></div>
@@ -1253,11 +1255,13 @@ function renderBattlePick(){
     <div class="enc-title">⚔️ ${oppName}와(과)의 배틀</div>
     ${B.practice?'<div style="text-align:center;background:rgba(90,169,230,.14);border:1px solid #35507a;border-radius:10px;padding:6px 8px;margin-bottom:8px;font-size:.78rem;color:#a9c8ee;">🎯 연습 대결 — 아래 <b>대여 환수</b> 중 하나로 출전하세요. 점수·기록에는 반영되지 않아요.</div>':""}
     <div class="vs-wrap">
-      <div class="mon-card"><div class="mc-art"><div class="ph">❔</div></div>
-      <div class="mc-nm">???</div><div class="mc-hp">상대 환수는 비공개!</div></div>
-      <div class="vs-x">VS</div>
-      <div class="mon-card"><div class="mc-art"><div class="ph" style="--tc:#2a3450">🫵</div></div>
+      <div class="mon-card side-mine"><div class="mc-owner mine">🫵 ${dispSelf()}</div>
+      <div class="mc-art"><div class="ph" style="--tc:#2a3450">🫵</div></div>
       <div class="mc-nm">출전 환수 선택</div><div class="mc-hp">아래에서 고르세요</div></div>
+      <div class="vs-x">VS</div>
+      <div class="mon-card side-opp"><div class="mc-owner opp">👤 ${oppName}</div>
+      <div class="mc-art"><div class="ph">❔</div></div>
+      <div class="mc-nm">???</div><div class="mc-hp">상대 환수는 비공개!</div></div>
     </div>
     <div style="font-size:.8rem;color:var(--sub);margin:4px 0 8px;">블라인드 픽 — 상대도 지금 자기 환수를 고르는 중입니다.</div>
     <div id="pickList">${roster.map(c=>{
@@ -1286,11 +1290,13 @@ function renderBattleCommit(){
   $("#battleSheet").innerHTML=`<div class="grip"></div>
     <div class="enc-title">⚔️ 스킬 배치 — 상대에겐 보이지 않습니다</div>
     <div class="vs-wrap">
-      <div class="mon-card"><div class="mc-art"><div class="ph">❔</div></div>
-      <div class="mc-nm">???</div><div class="mc-hp">비공개</div></div>
-      <div class="vs-x">VS</div>
-      <div class="mon-card"><div class="mc-art" style="--tc:${tc}">${artHTML(m)}</div>
+      <div class="mon-card side-mine"><div class="mc-owner mine">🫵 ${dispSelf()}</div>
+      <div class="mc-art" style="--tc:${tc}">${artHTML(m)}</div>
       <div class="mc-nm">${m.name}</div><div class="mc-hp">HP ${B.mine.hp}/${m.hp}</div></div>
+      <div class="vs-x">VS</div>
+      <div class="mon-card side-opp"><div class="mc-owner opp">👤 ${B.opp&&B.opp.name?B.opp.name:(B.oppInfo?B.oppInfo.name:"상대")}</div>
+      <div class="mc-art"><div class="ph">❔</div></div>
+      <div class="mc-nm">???</div><div class="mc-hp">비공개</div></div>
     </div>
     <div style="font-size:.82rem;color:var(--sub);">스킬 3개를 순서대로 배치하세요 (반복 가능). 채워진 슬롯을 누르면 비웁니다.</div>
     <div class="slots" id="slots">${slotHTML}</div>
@@ -1324,13 +1330,13 @@ function vsHeaderHTML(){
   const oppName=(B.opp&&B.opp.name)?B.opp.name:(B.oppInfo?B.oppInfo.name:"상대");
   const myName=(typeof dispSelf==="function")?dispSelf():(S.name||"나");
   return `<div class="vs-wrap">
-    <div class="mon-card"><div class="mc-owner mine">🫵 ${myName}</div>
+    <div class="mon-card side-mine"><div class="mc-owner mine">🫵 ${myName}</div>
     <div class="mc-art" style="--tc:${tcM}">${artHTML(mm)}</div>
     <div class="mc-nm">${mm.name}</div>
     <div class="mc-hp">HP ${Math.max(0,B.mine.hp)}/${mm.hp}</div>
     <div>${hpBarHTML(Math.max(0,B.mine.hp),mm.hp)}</div></div>
     <div class="vs-x">VS</div>
-    <div class="mon-card"><div class="mc-owner opp">👤 ${oppName}</div>
+    <div class="mon-card side-opp"><div class="mc-owner opp">👤 ${oppName}</div>
     <div class="mc-art" style="--tc:${tcO}">${artHTML(om)}</div>
     <div class="mc-nm">${om.name}</div>
     <div class="mc-hp">HP ${Math.max(0,B.opp.hp)}/${B.opp.maxHp}</div>

@@ -15,10 +15,26 @@ header .eyebrow{letter-spacing:.42em;font-size:.72rem;color:var(--gold);opacity:
 header h1{font-size:2rem;font-weight:800;margin-bottom:8px;}
 header p{color:var(--sub);font-size:.92rem;line-height:1.7;max-width:520px;margin:0 auto;}
 .stats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:22px 0 8px;}
-.stat-chip{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 18px;text-align:center;min-width:78px;}
+.stat-chip{background:var(--panel);border:1.5px solid var(--line);border-radius:14px;padding:10px 18px;text-align:center;min-width:78px;cursor:pointer;transition:.15s;font-family:inherit;color:var(--ink);}
+.stat-chip:hover{transform:translateY(-2px);}
 .stat-chip b{display:block;font-size:1.3rem;font-weight:800;}
 .stat-chip span{font-size:.68rem;color:var(--sub);}
 .stat-chip.c b{color:var(--gC);}.stat-chip.b b{color:var(--gB);}.stat-chip.a b{color:var(--gA);}.stat-chip.s b{color:var(--gS);}
+.stat-chip.on{border-color:var(--gold);background:var(--panel2);box-shadow:0 0 14px rgba(242,180,65,.18);}
+.stat-chip.c.on{border-color:var(--gC);}.stat-chip.b.on{border-color:var(--gB);}
+.stat-chip.a.on{border-color:var(--gA);}.stat-chip.s.on{border-color:var(--gS);}
+/* 본문: 좌측 타입 탭 + 우측 그리드 */
+.body-cols{display:flex;gap:14px;align-items:flex-start;}
+.type-col{position:sticky;top:76px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;width:112px;}
+.type-col button{background:var(--panel);border:1.5px solid var(--line);color:var(--sub);border-radius:12px;padding:10px 8px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s;text-align:left;display:flex;align-items:center;gap:6px;}
+.type-col button:hover{color:var(--ink);}
+.type-col button.on{background:var(--panel2);color:var(--ink);border-color:var(--gold);}
+.main-col{flex:1;min-width:0;}
+@media(max-width:640px){
+  .body-cols{flex-direction:column;}
+  .type-col{position:static;width:100%;flex-direction:row;flex-wrap:wrap;}
+  .type-col button{flex:0 0 auto;padding:8px 12px;}
+}
 .controls{position:sticky;top:0;background:linear-gradient(180deg,var(--bg) 78%,transparent);padding:14px 0 10px;z-index:20;margin-top:14px;}
 .search-row{display:flex;gap:8px;margin-bottom:10px;}
 .search-row input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:12px;color:var(--ink);padding:12px 14px;font-size:.92rem;font-family:inherit;}
@@ -78,12 +94,15 @@ footer{text-align:center;color:var(--sub);font-size:.74rem;margin-top:36px;line-
 
 <div class="controls">
   <div class="search-row"><input id="search" placeholder="이름 또는 번호로 검색 (예: 001, 백호)"></div>
-  <div class="filter-row" id="typeRow"></div>
-  <div class="filter-row grade" id="gradeRow"></div>
 </div>
-<div class="count-line" id="countLine"></div>
-<div class="grid" id="grid"></div>
-<div id="emptyMsg" class="empty" style="display:none;">검색 결과가 없습니다.</div>
+<div class="body-cols">
+  <div class="type-col" id="typeCol"></div>
+  <div class="main-col">
+    <div class="count-line" id="countLine"></div>
+    <div class="grid" id="grid"></div>
+    <div id="emptyMsg" class="empty" style="display:none;">검색 결과가 없습니다.</div>
+  </div>
+</div>
 
 <footer>환수 원정대 · 교육용 몬스터 도감 미리보기 · 게임 시작 전 참가자 사전 안내 자료</footer>
 </div>
@@ -125,27 +144,35 @@ function artHTML(m){
 function skillListHTML(m){return m.skills.map(s=>`<div class="skill"><span class="rps">${RPS_IC[s.rps]}</span><span>${s.name}</span><span class="atk">${s.atk}</span></div>`).join("");}
 
 function renderStats(){
-  const total=MONSTERS.length;
   const cnt={C:0,B:0,A:0,S:0};
-  MONSTERS.forEach(m=>cnt[m.grade]++);
-  $("#statBox").innerHTML=`
-    <div class="stat-chip"><b>${total}</b><span>전체 종수</span></div>
-    <div class="stat-chip c"><b>${cnt.C}</b><span>C등급</span></div>
-    <div class="stat-chip b"><b>${cnt.B}</b><span>B등급</span></div>
-    <div class="stat-chip a"><b>${cnt.A}</b><span>A등급</span></div>
-    <div class="stat-chip s"><b>${cnt.S}</b><span>S등급</span></div>`;
+  MONSTERS.filter(m=>!m.disabled).forEach(m=>cnt[m.grade]++);
+  const total=Object.values(cnt).reduce((a,b)=>a+b,0);
+  const chips=[
+    {g:"전체",cls:"",num:total,label:"전체 종수"},
+    {g:"C",cls:"c",num:cnt.C,label:"C등급"},
+    {g:"B",cls:"b",num:cnt.B,label:"B등급"},
+    {g:"A",cls:"a",num:cnt.A,label:"A등급"},
+    {g:"S",cls:"s",num:cnt.S,label:"S등급"}];
+  $("#statBox").innerHTML=chips.map(c=>
+    `<button class="stat-chip ${c.cls} ${curGrade===c.g?"on":""}" data-g="${c.g}"><b>${c.num}</b><span>${c.label}</span></button>`).join("");
+  $("#statBox").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    // 등급 버튼 클릭 → 타입 필터를 '전체'로 풀고 등급만 적용
+    curGrade=b.dataset.g;
+    curType="전체";
+    renderStats();renderTypeCol();renderGrid();
+  }));
 }
-function renderTypeRow(){
-  $("#typeRow").innerHTML=DEX_TYPES.map(t=>{
-    const label=t==="전체"?"전체":(t==="사신수"?"🏛️ 사신수":`${TYPE_EMOJI[t]} ${t}`);
+function renderTypeCol(){
+  $("#typeCol").innerHTML=DEX_TYPES.map(t=>{
+    const label=t==="전체"?"✨ 전체":(t==="사신수"?"🏛️ 사신수":`${TYPE_EMOJI[t]} ${t}`);
     return `<button data-t="${t}" class="${t===curType?"on":""}">${label}</button>`;
   }).join("");
-  $("#typeRow").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{curType=b.dataset.t;renderTypeRow();renderGrid();}));
-}
-function renderGradeRow(){
-  const grades=["전체","C","B","A","S"];
-  $("#gradeRow").innerHTML=grades.map(g=>`<button data-g="${g}" class="${g===curGrade?"on":""}">${g==="전체"?"전체 등급":GRADE_LABEL[g]}</button>`).join("");
-  $("#gradeRow").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{curGrade=b.dataset.g;renderGradeRow();renderGrid();}));
+  $("#typeCol").querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    // 타입 탭 클릭 → 등급 필터를 '전체'로 풀고 타입만 적용
+    curType=b.dataset.t;
+    curGrade="전체";
+    renderStats();renderTypeCol();renderGrid();
+  }));
 }
 function typeMatch(m){
   if(curType==="전체")return true;
@@ -197,7 +224,7 @@ function openDetail(id){
 document.getElementById("mDetail").addEventListener("click",e=>{if(e.target.id==="mDetail")e.target.classList.remove("on");});
 $("#search").addEventListener("input",e=>{curKw=e.target.value.trim();renderGrid();});
 
-renderStats();renderTypeRow();renderGradeRow();renderGrid();
+renderStats();renderTypeCol();renderGrid();
 
 /* ==================== 실시간 DB 연동 (관리자 콘솔 반영: 추가/수정/이미지) ==================== */
 function byIdMon(id){return MONSTERS.find(m=>m.id===id);}
@@ -214,7 +241,7 @@ function applyLiveData(){
   }
   // 3) 관리자가 업로드한 실제 이미지 반영 (SVG 대신 사진 표시)
   for(const id in IMG){ const m=byIdMon(id); if(m) m.imageUrl=IMG[id]; }
-  renderStats(); renderGrid();
+  renderStats(); renderTypeCol(); renderGrid();
 }
 function fbLiveInit(){
   try{
