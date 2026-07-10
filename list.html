@@ -30,26 +30,6 @@ header p{color:var(--sub);font-size:.92rem;line-height:1.7;max-width:520px;margi
 .type-col button:hover{color:var(--ink);}
 .type-col button.on{background:var(--panel2);color:var(--ink);border-color:var(--gold);}
 .main-col{flex:1;min-width:0;}
-@media(max-width:640px){
-  .wrap{padding:0 12px;}
-  header{padding:24px 0 12px;}
-  header .eyebrow{letter-spacing:.28em;font-size:.6rem;margin-top:24px;}
-  header h1{font-size:1.35rem;word-break:keep-all;}
-  header p{font-size:.8rem;}
-  /* 등급 박스: 한 줄 5칸 그리드로 고정 */
-  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:14px 0 6px;}
-  .stat-chip{min-width:0;padding:8px 4px;border-radius:11px;}
-  .stat-chip b{font-size:1.02rem;}
-  .stat-chip span{font-size:.58rem;letter-spacing:-.02em;}
-  /* 타입 탭: 한 줄 가로 스크롤 */
-  .body-cols{flex-direction:column;gap:8px;}
-  .type-col{position:static;width:100%;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-  .type-col::-webkit-scrollbar{display:none;}
-  .type-col button{flex:0 0 auto;padding:8px 13px;border-radius:99px;font-size:.78rem;white-space:nowrap;}
-  .controls{padding:8px 0 6px;}
-  .search-row input{padding:10px 12px;font-size:.85rem;}
-  .grid{grid-template-columns:repeat(auto-fit,minmax(108px,1fr));gap:8px;}
-}
 .controls{position:sticky;top:0;background:linear-gradient(180deg,var(--bg) 78%,transparent);padding:14px 0 10px;z-index:20;margin-top:14px;}
 .search-row{display:flex;gap:8px;margin-bottom:10px;}
 .search-row input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:12px;color:var(--ink);padding:12px 14px;font-size:.92rem;font-family:inherit;}
@@ -95,6 +75,30 @@ header p{color:var(--sub);font-size:.92rem;line-height:1.7;max-width:520px;margi
 .dex-text{font-size:.87rem;line-height:1.8;color:#c7d3e8;background:var(--panel2);border-radius:12px;padding:14px;margin-top:12px;}
 .closebtn{display:block;width:100%;border:none;border-radius:14px;padding:14px;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:16px;font-family:inherit;background:var(--panel2);color:var(--ink);border:1px solid var(--line);}
 footer{text-align:center;color:var(--sub);font-size:.74rem;margin-top:36px;line-height:1.8;}
+/* ===== 모바일 (기본 규칙보다 뒤에 두어 우선 적용) ===== */
+@media(max-width:640px){
+  html,body{overflow-x:hidden;}
+  .wrap{padding:0 12px;max-width:100%;overflow-x:hidden;}
+  header{padding:24px 0 12px;}
+  header .eyebrow{letter-spacing:.28em;font-size:.6rem;margin-top:24px;}
+  header h1{font-size:1.35rem;word-break:keep-all;}
+  header p{font-size:.8rem;}
+  /* 등급 박스: 한 줄 5칸 그리드로 고정 */
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:14px 0 6px;}
+  .stat-chip{min-width:0;padding:8px 4px;border-radius:11px;}
+  .stat-chip b{font-size:1.02rem;}
+  .stat-chip span{font-size:.58rem;letter-spacing:-.02em;}
+  /* 타입 탭: 한 줄 가로 스크롤 */
+  .body-cols{flex-direction:column;gap:8px;}
+  .type-col{position:static;width:100%;max-width:100%;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .type-col::-webkit-scrollbar{display:none;}
+  .type-col button{flex:0 0 auto;padding:8px 13px;border-radius:99px;font-size:.78rem;white-space:nowrap;}
+  .controls{padding:8px 0 6px;}
+  .search-row input{padding:10px 12px;font-size:.85rem;}
+  .main-col{width:100%;}
+  /* 카드 그리드: 최소폭 축소 + auto-fit으로 가로 꽉 채움 */
+  .grid{display:grid !important;grid-template-columns:repeat(auto-fit,minmax(96px,1fr)) !important;gap:8px;}
+}
 </style>
 </head>
 <body>
