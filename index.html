@@ -608,7 +608,19 @@ function attachListeners(){
   DB.ref("quizzes").on("value",s=>{RAW_QUIZZES=s.val(); applyQuizPool();});
   DB.ref("game/useDefaultQuiz").on("value",s=>{S.useDefaultQuiz = s.val()!==false; applyQuizPool();});
   DB.ref("stations/heal").on("value",s=>{HEAL_STATION=s.val();renderHealGateNote();});
-  DB.ref("stations/safari").on("value",s=>{SAFARI_STATION=s.val();updateNavLocks();if(!SAFARI.active)renderSafariGate();renderBattleReady();});
+  DB.ref("stations/safari").on("value",s=>{
+    const prevOpen = !!(SAFARI_STATION&&SAFARI_STATION.open);
+    SAFARI_STATION=s.val();
+    const nowOpen = !!(SAFARI_STATION&&SAFARI_STATION.open);
+    updateNavLocks();if(typeof SAFARI!=="undefined"&&!SAFARI.active)renderSafariGate();renderBattleReady();
+    // 닫힘→열림으로 바뀌는 순간에만 공지 팝업 (최초 로드나 계속 열림 상태에선 안 뜸)
+    if(typeof SAFARI!=="undefined"){
+      if(SAFARI._initDone && !prevOpen && nowOpen){
+        showNoticePopup("🏕️ 사파리존이 열렸습니다!","하단 <b>사파리</b> 탭으로 입장해 특별한 환수들을 만나보세요!<br>사파리볼로 야생 환수를 포획할 수 있습니다.",true);
+      }
+      SAFARI._initDone=true;
+    }
+  });
   DB.ref("battles").on("value",s=>{BATTLES_LIVE=s.val()||{};renderBattleReady();});
   DB.ref("blocks/_all").on("value",s=>{S.blockedAll=!!s.val();});
   DB.ref("blocks/"+UID).on("value",s=>{S.blocked=!!s.val();});
@@ -656,7 +668,13 @@ function updateNavLocks(){
     if(v==="explore")lock=!canExplore();
     if(v==="battle")lock=!canBattle() && S.phase!=="lobby";
     if(v==="heal")lock=!canBattle();
-    if(v==="safari")lock=!safariOpen();
+    if(v==="safari"){
+      // 사파리는 열려 있을 때만 메뉴에 노출, 닫히면 아예 숨김
+      b.style.display = safariOpen() ? "" : "none";
+      lock=false;
+      // 사파리가 닫혔는데 현재 사파리 화면을 보고 있으면 홈으로 이동
+      if(!safariOpen() && b.classList.contains("on")) switchView("home");
+    }
     b.classList.toggle("lockdim",lock);});
 }
 function applyPhase(ph,timerEnd){
@@ -667,13 +685,7 @@ function applyPhase(ph,timerEnd){
   updateNavLocks();renderBattleButtons();updateActionLocks();
   if(!first&&prev!==ph&&PHASE_POPUP[ph]){
     const[t,d]=PHASE_POPUP[ph];
-    $("#detailSheet").innerHTML=`<div class="grip"></div>
-      <div style="text-align:center;padding:10px 0;">
-      <div class="enc-name" style="font-size:1.4rem;">${t}</div>
-      <div style="font-size:.95rem;color:#c7d3e8;line-height:1.7;margin-top:8px;">${d}</div></div>
-      <button class="btn gold" onclick="document.getElementById('mDetail').classList.remove('on')">확인!</button>`;
-    $("#mDetail").classList.add("on");
-    if(navigator.vibrate)navigator.vibrate([120,60,120]);
+    showNoticePopup(t,d,true);
   }
   if(ph==="ended"&&!reviewShown){reviewShown=true;setTimeout(()=>{renderHistory("wrong");},1200);}
 }
@@ -725,15 +737,18 @@ function renderRank(){
 }
 
 /* ==================== 탭 ==================== */
+function switchView(v){
+  const btn=document.querySelector(`nav button[data-v="${v}"]`);
+  document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));
+  if(btn)btn.classList.add("on");
+  document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
+  const view=$("#v-"+v);if(view)view.classList.add("on");
+  if(v==="heal")renderHeal();
+  if(v==="dex")renderDex();
+  if(v==="safari")onSafariTab();
+}
 document.querySelectorAll("nav button").forEach(b=>{
-  b.addEventListener("click",()=>{
-    document.querySelectorAll("nav button").forEach(x=>x.classList.remove("on"));b.classList.add("on");
-    document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));
-    $("#v-"+b.dataset.v).classList.add("on");
-    if(b.dataset.v==="heal")renderHeal();
-    if(b.dataset.v==="dex")renderDex();
-    if(b.dataset.v==="safari")onSafariTab();
-  });
+  b.addEventListener("click",()=>switchView(b.dataset.v));
 });
 
 /* ==================== 탐험 ==================== */
@@ -1778,6 +1793,16 @@ const SAFARI={active:false,balls:0,ballsMax:0,tEnd:0,dur:0,
 let SAFARI_ENTRIES=(typeof window!=="undefined"&&typeof window._sfEntriesInit==="number")?window._sfEntriesInit:0, SF_CTRL_BOUND=false;
 
 function safariOpen(){ return DEMO_MODE || !!(SAFARI_STATION&&SAFARI_STATION.open); }
+/* 공용 공지 팝업 */
+function showNoticePopup(title,desc,vibrate){
+  $("#detailSheet").innerHTML=`<div class="grip"></div>
+    <div style="text-align:center;padding:10px 0;">
+    <div class="enc-name" style="font-size:1.4rem;">${title}</div>
+    <div style="font-size:.95rem;color:#c7d3e8;line-height:1.7;margin-top:8px;">${desc}</div></div>
+    <button class="btn gold" onclick="document.getElementById('mDetail').classList.remove('on')">확인!</button>`;
+  $("#mDetail").classList.add("on");
+  if(vibrate&&navigator.vibrate)navigator.vibrate([120,60,120]);
+}
 function sfCfg(){ const s=SAFARI_STATION||{}; return {cap:+s.cap||SF_DEFAULT.cap, balls:+s.balls||SF_DEFAULT.balls, dur:+s.dur||SF_DEFAULT.dur}; }
 function sfOccCount(){ const s=SAFARI_STATION||{}; return s.occ?Object.keys(s.occ).length:0; }
 function sfRoundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
