@@ -303,7 +303,7 @@ nav button.lockdim{opacity:.35;}
         <button data-bt="log">📜 배틀 전적</button>
       </div>
       <div id="battleTabReady">
-        <div style="font-size:.72rem;color:var(--sub);margin-bottom:6px;">사파리존 입장 중이거나 배틀 중인 인원은 제외됩니다 · 아이콘은 보유 환수 타입</div>
+        <div style="font-size:.72rem;color:var(--sub);margin-bottom:6px;">사파리존 입장 중이거나 배틀 중인 인원은 제외됩니다 · 전적은 나와의 맞대결 기준 · 아이콘은 보유 환수 타입</div>
         <div id="battleReady" style="max-height:52vh;overflow-y:auto;"><div style="font-size:.8rem;color:var(--sub);">불러오는 중…</div></div>
       </div>
       <div id="battleTabLog" style="display:none;">
@@ -1519,7 +1519,7 @@ function finishBattle(fromSd){
   S.score+=pts;
   const resTxt=result==="win"?"🏆 승리!":result==="lose"?"패배…":"무승부";
   const evoReady=mm.evolveTo&&B.mine.wins>=mm.evolveWins&&B.mine.hp>0;
-  S.battleLog.unshift({t:nowHM(),opp:B.opp.name,my:mm.name,om:om.name,result,pts});
+  S.battleLog.unshift({t:nowHM(),opp:B.opp.name,oppUid:oppKey,my:mm.name,om:om.name,result,pts});
   refreshHUD();renderBattleLog();
   addFeed(`${B.opp.name}와(과)의 배틀 <b>${resTxt}</b> ${pts?`+${pts}점`:""} ${myFaint?`· ${mm.name} 기절😵`:""}`);
   if(B.mode==="net"&&B.role==="h"){
@@ -1593,6 +1593,13 @@ function renderBattleReady(){
     if(r.guest&&r.guest.uid)busy.add(r.guest.uid);
   }
   // 2) 나와 바쁜 사람을 제외한 참가자 목록
+  // 나와 각 상대의 맞대결 전적을 내 배틀 로그에서 집계 (oppUid 기준)
+  const h2h={};
+  (S.battleLog||[]).forEach(x=>{
+    if(!x.oppUid)return; // 상대 uid가 기록된 로그만 집계(구버전 로그는 제외)
+    const k=x.oppUid; if(!h2h[k])h2h[k]={w:0,l:0,d:0};
+    if(x.result==="win")h2h[k].w++; else if(x.result==="lose")h2h[k].l++; else h2h[k].d++;
+  });
   const rows=Object.entries(PLAYERS||{})
     .filter(([uid,p])=>uid!==UID&&p&&p.name&&!busy.has(uid))
     .map(([uid,p])=>{
@@ -1602,8 +1609,9 @@ function renderBattleReady(){
         const m=byId(c.monsterId);if(!m)return;
         if(m.category==="사신수")owned.add("사신수");else owned.add(m.type);
       });
-      return {uid,name:(p.name||"?")+(p.title?" "+p.title:""),owned,upd:p.upd||0,
-        wl:(p.wl&&typeof p.wl==="object")?{w:p.wl.w||0,l:p.wl.l||0,d:p.wl.d||0}:{w:0,l:0,d:0}};
+      // 통산 전적이 아니라 '나 vs 이 사람' 맞대결 전적을 표시
+      const rec=h2h[uid]||{w:0,l:0,d:0};
+      return {uid,name:(p.name||"?")+(p.title?" "+p.title:""),owned,upd:p.upd||0,wl:rec};
     })
     .sort((a,b)=>b.upd-a.upd);
   const c=document.getElementById("readyCnt");if(c)c.textContent=rows.length+"명";
@@ -1617,7 +1625,7 @@ function renderBattleReady(){
     const total=r.wl.w+r.wl.l+r.wl.d;
     const record=total
       ? `<span style="color:#7ee08a;">${r.wl.w}승</span>${r.wl.d>0?` <span style="color:var(--sub);">${r.wl.d}무</span>`:""} <span style="color:#ff8a8a;">${r.wl.l}패</span>`
-      : `<span style="color:var(--sub);">전적 없음</span>`;
+      : `<span style="color:var(--sub);">맞대결 없음</span>`;
     return `<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid #ffffff0d;">
       <div style="flex:1;min-width:0;font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name}</div>
       <div style="flex-shrink:0;font-size:.7rem;font-weight:700;">${record}</div>
