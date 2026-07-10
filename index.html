@@ -1349,6 +1349,8 @@ async function revealOne(mm,om,mySk,opSk,slotNo){
   if(B.mine.hp<=0||B.opp.hp<=0){await sleep(650);finishBattle(false);return"end";}
   return"ok";
 }
+const SD_MAX=5; /* 서든데스 최대 라운드 */
+/* 서든데스 스킬 선택 UI — 내가 고른 스킬 인덱스를 반환 */
 function pickSdUI(mm){
   return new Promise(res=>{
     $("#revealArea").insertAdjacentHTML("beforeend",`
@@ -1358,46 +1360,101 @@ function pickSdUI(mm){
         <div class="skillpick" style="margin-top:8px;">${mm.skills.map((s,i)=>`
         <button data-sd="${i}"><span class="rps">${RPS_IC[s.rps]}</span><span>${s.name}</span><span class="atk">${s.atk}</span></button>`).join("")}</div></div></div>`);
     $("#revealArea").querySelectorAll("[data-sd]").forEach(b=>
-      b.addEventListener("click",()=>{document.getElementById("sdRow").remove();res(+b.dataset.sd);}));
+      b.addEventListener("click",()=>{const el=document.getElementById("sdRow");if(el)el.remove();res(+b.dataset.sd);}));
     $("#battleSheet").scrollTop=$("#battleSheet").scrollHeight;
   });
 }
-function getOppSd(n){
-  if(B.mode!=="net")return Promise.resolve(Math.floor(Math.random()*3));
+/* 특정 경로에 값이 채워질 때까지 1회성 대기 (라운드별로 정확히 격리) */
+function waitVal(ref){
   return new Promise(res=>{
-    const oppRole=(B.role==="h"?"g":"h");
-    const ref=B.ref.child("sd_"+oppRole+"/"+n);
     let done=false;
-    const handler=s=>{
-      const v=s.val();
-      if(v==null||done)return;   // 값이 아직 없으면 계속 대기, 이미 처리했으면 무시
-      done=true;
-      ref.off("value",handler);  // 이 라운드 리스너만 정확히 해제(다음 라운드와 섞이지 않도록)
-      res(v);
-    };
-    ref.on("value",handler,()=>{ if(!done){done=true;res(Math.floor(Math.random()*3));} });
+    const handler=s=>{const v=s.val();if(v==null||done)return;done=true;ref.off("value",handler);res(v);};
+    ref.on("value",handler,()=>{if(!done){done=true;res(null);}});
   });
+}
+/* 서든데스 한 라운드의 결과를 화면에 그리고, 넘겨받은 델타로 로컬 상태(HP/승수/피해)를 갱신 */
+function applySdRound(mm,om,rec){
+  // rec: {aSk,bSk,winForMe,dmgToMe,dmgToOpp}  ※ 'me' 관점으로 정규화되어 들어옴
+  const sa=mm.skills[rec.mySk], sb=om.skills[rec.opSk];
+  B.mine.hp-=rec.dmgToMe; B.opp.hp-=rec.dmgToOpp;
+  B.dmgDealt+=rec.dmgToOpp; B.dmgTaken+=rec.dmgToMe;
+  if(rec.winForMe==="me")B.winA++; else if(rec.winForMe==="opp")B.winB++;
+  const verdict=rec.winForMe==="me"?`<div class="verdict vA">승리</div>`
+    :rec.winForMe==="opp"?`<div class="verdict vB">패배</div>`
+    :`<div class="verdict vD">무승부${rec.dmgToMe>0?'<small>충돌 피해</small>':""}</div>`;
+  $("#revealArea").insertAdjacentHTML("beforeend",`
+    <div class="reveal-row ${rec.winForMe==="me"?"winA":rec.winForMe==="opp"?"winB":""}">
+      <div class="sn">SD</div>
+      <div class="duel">
+        <div class="dl">🫵 ${RPS_IC[sa.rps]} ${sa.name}${rec.dmgToMe?` <span class="dmg">-${rec.dmgToMe}</span>`:""}</div>
+        <div class="dl op">👤 ${RPS_IC[sb.rps]} ${sb.name}${rec.dmgToOpp?` <span class="dmg">-${rec.dmgToOpp}</span>`:""}</div>
+      </div>${verdict}</div>`);
+  $("#vsHead").innerHTML=vsHeaderHTML();
+  if(navigator.vibrate)navigator.vibrate(60);
 }
 async function suddenDeath(){
   const mm=byId(B.mine.monsterId),om=byId(B.opp.monsterId);
   B.sdActive=true;
-  // 이전에 남아있을 수 있는 서든데스 데이터를 깨끗이 비우고 시작(오래된 값 오인 방지).
-  if(B.mode==="net"){ try{ await B.ref.child("sd_h").remove(); await B.ref.child("sd_g").remove(); }catch(e){} }
-  for(let n=0;n<5;n++){
-    const myPick=await pickSdUI(mm);
-    if(B.mode==="net"){
-      B.ref.child("sd_"+B.role+"/"+n).set(myPick);
-      $("#revealArea").insertAdjacentHTML("beforeend",`<div style="text-align:center;color:var(--sub);font-size:.8rem;" id="sdWait">상대 선택 대기 중…</div>`);
+
+  /* --- 봇/연습 모드: 로컬에서 즉시 판정 --- */
+  if(B.mode!=="net"){
+    for(let n=0;n<SD_MAX;n++){
+      const myPick=await pickSdUI(mm);
+      const opPick=Math.floor(Math.random()*3);
+      const j=judgeSlot(mm.skills[myPick],om.skills[opPick],mm.type,om.type);
+      applySdRound(mm,om,{mySk:myPick,opSk:opPick,
+        winForMe:j.win==="A"?"me":j.win==="B"?"opp":"draw",dmgToMe:j.dmgA,dmgToOpp:j.dmgB});
+      if(B.mine.hp<=0||B.opp.hp<=0){await sleep(650);B.sdActive=false;finishBattle(true);return;}
+      if(B.winA!==B.winB){B.sdActive=false;finishBattle(true);return;}
+      await sleep(400);
     }
-    const opPick=await getOppSd(n);
-    const w=document.getElementById("sdWait");if(w)w.remove();
-    const r=await revealOne(mm,om,myPick,opPick,"SD");
-    if(r==="end"){B.sdActive=false;return;}
-    if(B.winA!==B.winB){B.sdActive=false;finishBattle(true);return;}
-    await sleep(400);
+    B.sdActive=false;finishBattle(true);return;
   }
-  B.sdActive=false;
-  finishBattle(true);
+
+  /* --- 네트워크 모드: 방장(H)이 단독 판정, 게스트(G)는 결과를 따름 --- */
+  // 이전 잔여 데이터 정리 (방장만 수행)
+  if(B.role==="h"){ try{ await B.ref.child("sd").remove(); }catch(e){} }
+
+  for(let n=0;n<SD_MAX;n++){
+    // 1) 내 선택을 올린다
+    const myPick=await pickSdUI(mm);
+    await B.ref.child("sd/pick_"+B.role+"/"+n).set(myPick);
+    $("#revealArea").insertAdjacentHTML("beforeend",`<div style="text-align:center;color:var(--sub);font-size:.8rem;" id="sdWait">상대 선택 대기 중…</div>`);
+
+    if(B.role==="h"){
+      // 방장: 게스트의 선택을 기다린 뒤 판정하고 결과를 기록
+      const gPick=await waitVal(B.ref.child("sd/pick_g/"+n));
+      const w=document.getElementById("sdWait");if(w)w.remove();
+      const gp=(gPick==null?Math.floor(Math.random()*3):gPick);
+      // 방장 관점(mine=H)으로 판정
+      const j=judgeSlot(mm.skills[myPick],om.skills[gp],mm.type,om.type);
+      // 방장 로컬 반영
+      applySdRound(mm,om,{mySk:myPick,opSk:gp,
+        winForMe:j.win==="A"?"me":j.win==="B"?"opp":"draw",dmgToMe:j.dmgA,dmgToOpp:j.dmgB});
+      const faint=(B.mine.hp<=0||B.opp.hp<=0);
+      const decided=faint||(B.winA!==B.winB);
+      const isFinal=decided||(n===SD_MAX-1);
+      // 게스트가 그대로 그릴 수 있도록 'H 기준' 결과를 기록 (G는 부호를 뒤집어 해석)
+      await B.ref.child("sd/result/"+n).set({
+        hSk:myPick, gSk:gp, hWin:j.win, dmgH:j.dmgA, dmgG:j.dmgB, final:isFinal
+      });
+      if(decided){ await sleep(650); B.sdActive=false; finishBattle(true); return; }
+      if(n===SD_MAX-1){ B.sdActive=false; finishBattle(true); return; }
+      await sleep(400);
+    } else {
+      // 게스트: 방장이 기록한 결과를 기다려 그대로 반영 (스스로 판정하지 않음)
+      const rec=await waitVal(B.ref.child("sd/result/"+n));
+      const w=document.getElementById("sdWait");if(w)w.remove();
+      if(!rec){ B.sdActive=false; finishBattle(true); return; }
+      // 결과는 'H 기준'. 게스트(mine=G) 관점으로 부호를 뒤집어 해석
+      const winForMe = rec.hWin==="A"?"opp" : rec.hWin==="B"?"me" : "draw";
+      applySdRound(mm,om,{mySk:rec.gSk, opSk:rec.hSk,
+        winForMe, dmgToMe:rec.dmgG, dmgToOpp:rec.dmgH});
+      if(rec.final){ await sleep(650); B.sdActive=false; finishBattle(true); return; }
+      await sleep(400);
+    }
+  }
+  B.sdActive=false; finishBattle(true);
 }
 function finishBattle(fromSd){
   const mm=byId(B.mine.monsterId),om=byId(B.opp.monsterId);
