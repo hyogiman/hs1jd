@@ -117,8 +117,12 @@ nav button.on{color:var(--ink);}nav button.on .ic{filter:none;transform:translat
 .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#000c;color:#fff;padding:10px 18px;border-radius:99px;font-size:.85rem;z-index:300;opacity:0;transition:.3s;pointer-events:none;white-space:nowrap;max-width:92vw;}
 .toast.on{opacity:1;}
 .battle-entry .desc{font-size:.8rem;color:var(--sub);line-height:1.7;margin-top:6px;}
-.vs-wrap{display:flex;gap:8px;align-items:stretch;margin:6px 0 12px;}
+.vs-wrap{display:flex;flex-wrap:nowrap;gap:8px;align-items:stretch;margin:6px 0 12px;}
+.vs-wrap .mon-card{flex:1 1 0;}
 .mon-card{flex:1;background:var(--panel2);border:1.5px solid var(--line);border-radius:14px;padding:10px;text-align:center;min-width:0;}
+.mon-card .mc-owner{font-size:.72rem;font-weight:700;margin-bottom:6px;padding:2px 8px;border-radius:99px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;max-width:100%;}
+.mon-card .mc-owner.opp{background:rgba(242,84,45,.16);color:#ff9d7a;}
+.mon-card .mc-owner.mine{background:rgba(90,169,230,.18);color:#8ec5f0;}
 .mon-card .mc-art{width:74px;height:74px;margin:0 auto;display:flex;align-items:center;justify-content:center;}
 .mon-card .mc-art svg{width:100%;height:100%;}
 .mon-card .mc-art .ph{width:64px;height:64px;border-radius:50%;background:linear-gradient(145deg,var(--tc,#2a3450),#0006);display:flex;align-items:center;justify-content:center;font-size:1.9rem;border:3px solid #ffffff22;}
@@ -1317,16 +1321,20 @@ function startNetReveal(r,opKey){
 function vsHeaderHTML(){
   const mm=byId(B.mine.monsterId),om=byId(B.opp.monsterId);
   const tcM=TYPE_COLOR[mm.type],tcO=TYPE_COLOR[om.type];
+  const oppName=(B.opp&&B.opp.name)?B.opp.name:(B.oppInfo?B.oppInfo.name:"상대");
+  const myName=(typeof dispSelf==="function")?dispSelf():(S.name||"나");
   return `<div class="vs-wrap">
-    <div class="mon-card"><div class="mc-art" style="--tc:${tcO}">${artHTML(om)}</div>
-    <div class="mc-nm">${om.name}</div>
-    <div class="mc-hp">HP ${Math.max(0,B.opp.hp)}/${B.opp.maxHp}</div>
-    <div>${hpBarHTML(Math.max(0,B.opp.hp),B.opp.maxHp)}</div></div>
-    <div class="vs-x">VS</div>
-    <div class="mon-card"><div class="mc-art" style="--tc:${tcM}">${artHTML(mm)}</div>
+    <div class="mon-card"><div class="mc-owner mine">🫵 ${myName}</div>
+    <div class="mc-art" style="--tc:${tcM}">${artHTML(mm)}</div>
     <div class="mc-nm">${mm.name}</div>
     <div class="mc-hp">HP ${Math.max(0,B.mine.hp)}/${mm.hp}</div>
-    <div>${hpBarHTML(Math.max(0,B.mine.hp),mm.hp)}</div></div></div>`;
+    <div>${hpBarHTML(Math.max(0,B.mine.hp),mm.hp)}</div></div>
+    <div class="vs-x">VS</div>
+    <div class="mon-card"><div class="mc-owner opp">👤 ${oppName}</div>
+    <div class="mc-art" style="--tc:${tcO}">${artHTML(om)}</div>
+    <div class="mc-nm">${om.name}</div>
+    <div class="mc-hp">HP ${Math.max(0,B.opp.hp)}/${B.opp.maxHp}</div>
+    <div>${hpBarHTML(Math.max(0,B.opp.hp),B.opp.maxHp)}</div></div></div>`;
 }
 async function runReveal(){
   const mm=byId(B.mine.monsterId),om=byId(B.opp.monsterId);
@@ -1535,13 +1543,17 @@ function finishBattle(fromSd){
   $("#btnBtClose2").addEventListener("click",closeBattle);
   $("#battleSheet").scrollTop=$("#battleSheet").scrollHeight;
 }
+/* 전적 표기 통일: 무승부가 있으면 'N승 N무 N패', 없으면 'N승 N패' */
+function fmtRecord(w,l,d){
+  return d>0 ? `${w}승 ${d}무 ${l}패` : `${w}승 ${l}패`;
+}
 function renderBattleLog(){
   const L=S.battleLog;
   const w=L.filter(x=>x.result==="win").length,l=L.filter(x=>x.result==="lose").length,d=L.length-w-l;
   const list=S.blogFilter==="all"?L:L.filter(x=>x.result===S.blogFilter);
   $("#battleLog").innerHTML=`
     <div style="display:flex;gap:12px;align-items:baseline;margin-bottom:8px;">
-      <span style="font-size:1.35rem;font-weight:800;">${w}승 ${l}패${d?` ${d}무`:""}</span>
+      <span style="font-size:1.35rem;font-weight:800;">${fmtRecord(w,l,d)}</span>
       <span style="color:var(--sub);font-size:.78rem;">승률 ${L.length?Math.round(w/L.length*100):0}%</span></div>
     <div class="seg">
       <button data-bf="all" class="${S.blogFilter==="all"?"on":""}">전체 ${L.length}</button>
@@ -1590,7 +1602,8 @@ function renderBattleReady(){
         const m=byId(c.monsterId);if(!m)return;
         if(m.category==="사신수")owned.add("사신수");else owned.add(m.type);
       });
-      return {uid,name:(p.name||"?")+(p.title?" "+p.title:""),owned,upd:p.upd||0};
+      return {uid,name:(p.name||"?")+(p.title?" "+p.title:""),owned,upd:p.upd||0,
+        wl:(p.wl&&typeof p.wl==="object")?{w:p.wl.w||0,l:p.wl.l||0,d:p.wl.d||0}:{w:0,l:0,d:0}};
     })
     .sort((a,b)=>b.upd-a.upd);
   const c=document.getElementById("readyCnt");if(c)c.textContent=rows.length+"명";
@@ -1601,9 +1614,14 @@ function renderBattleReady(){
       const ic=t==="사신수"?"🏛️":TYPE_EMOJI[t];
       return `<span style="font-size:.85rem;${has?"":"opacity:.16;filter:grayscale(1);"}" title="${t}${has?" 보유":" 미보유"}">${ic}</span>`;
     }).join("");
+    const total=r.wl.w+r.wl.l+r.wl.d;
+    const record=total
+      ? `<span style="color:#7ee08a;">${r.wl.w}승</span>${r.wl.d>0?` <span style="color:var(--sub);">${r.wl.d}무</span>`:""} <span style="color:#ff8a8a;">${r.wl.l}패</span>`
+      : `<span style="color:var(--sub);">전적 없음</span>`;
     return `<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid #ffffff0d;">
-      <div style="flex:1;font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name}</div>
-      <div style="display:flex;gap:3px;">${icons}</div></div>`;
+      <div style="flex:1;min-width:0;font-size:.85rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.name}</div>
+      <div style="flex-shrink:0;font-size:.7rem;font-weight:700;">${record}</div>
+      <div style="display:flex;gap:3px;flex-shrink:0;">${icons}</div></div>`;
   }).join("");
 }
 function closeBattle(){
