@@ -293,12 +293,19 @@ nav button.lockdim{opacity:.35;}
       <div id="battleButtons"></div>
       <div class="desc">블라인드 픽: 상대 환수를 모른 채 내 환수를 고르고, 스킬 3개를 비밀리에 제출합니다. 슬롯별 동시 공개!</div>
     </div>
-    <div class="card"><h3>🎯 지금 배틀 가능한 대원 <span class="tag" id="readyCnt"></span></h3>
-      <div style="font-size:.72rem;color:var(--sub);margin-bottom:6px;">사파리존 입장 중이거나 배틀 중인 대원은 제외됩니다 · 아이콘은 보유 환수 타입</div>
-      <div id="battleReady"><div style="font-size:.8rem;color:var(--sub);">불러오는 중…</div></div>
-      <div style="border-top:1px solid var(--line);margin:12px 0 10px;"></div>
-      <h3 style="margin-bottom:8px;">📜 배틀 전적</h3>
-      <div id="battleLog"><div style="font-size:.8rem;color:var(--sub);">아직 배틀 기록이 없습니다.</div></div></div>
+    <div class="card">
+      <div class="seg" id="battleTabSeg">
+        <button data-bt="ready" class="on">🎯 배틀 가능 인원 <b id="readyCnt" style="color:var(--gold);"></b></button>
+        <button data-bt="log">📜 배틀 전적</button>
+      </div>
+      <div id="battleTabReady">
+        <div style="font-size:.72rem;color:var(--sub);margin-bottom:6px;">사파리존 입장 중이거나 배틀 중인 인원은 제외됩니다 · 아이콘은 보유 환수 타입</div>
+        <div id="battleReady" style="max-height:52vh;overflow-y:auto;"><div style="font-size:.8rem;color:var(--sub);">불러오는 중…</div></div>
+      </div>
+      <div id="battleTabLog" style="display:none;">
+        <div id="battleLog"><div style="font-size:.8rem;color:var(--sub);">아직 배틀 기록이 없습니다.</div></div>
+      </div>
+    </div>
   </section>
 
   <section class="view" id="v-heal">
@@ -533,6 +540,7 @@ function globalFeed(msg){
   DB.ref("feed").push({msg,uid:UID,type:"event",ts:firebase.database.ServerValue.TIMESTAMP});
 }
 function attachListeners(){
+  initBattleTabs();
   DB.ref("players").on("value",s=>{PLAYERS=s.val()||{};renderRank();renderBattleReady();});
   DB.ref("feed").limitToLast(25).on("child_added",s=>{const v=s.val()||{};if(v.msg)onGlobalFeed(v);});
   DB.ref("chat").limitToLast(30).on("child_added",s=>{const v=s.val()||{};if(!v.msg)return;
@@ -1548,8 +1556,17 @@ function renderBattleLog(){
   $("#battleLog").querySelectorAll("[data-bf]").forEach(b=>
     b.addEventListener("click",()=>{S.blogFilter=b.dataset.bf;renderBattleLog();}));
 }
-/* ==================== 배틀 가능 대원 목록 ==================== */
+/* ==================== 배틀 가능 인원 목록 ==================== */
 let BATTLES_LIVE={};
+function initBattleTabs(){
+  const seg=document.getElementById("battleTabSeg");if(!seg||seg._wired)return;seg._wired=true;
+  seg.querySelectorAll("[data-bt]").forEach(b=>b.addEventListener("click",()=>{
+    seg.querySelectorAll("[data-bt]").forEach(x=>x.classList.toggle("on",x===b));
+    const isReady=b.dataset.bt==="ready";
+    document.getElementById("battleTabReady").style.display=isReady?"":"none";
+    document.getElementById("battleTabLog").style.display=isReady?"none":"";
+  }));
+}
 const READY_ICON_ORDER=["불","물","풀","철","돌","풍","에스퍼","사신수"];
 function renderBattleReady(){
   const box=document.getElementById("battleReady");if(!box)return;
@@ -1577,7 +1594,7 @@ function renderBattleReady(){
     })
     .sort((a,b)=>b.upd-a.upd);
   const c=document.getElementById("readyCnt");if(c)c.textContent=rows.length+"명";
-  if(!rows.length){box.innerHTML='<div style="font-size:.8rem;color:var(--sub);">지금 배틀 가능한 대원이 없습니다.</div>';return;}
+  if(!rows.length){box.innerHTML='<div style="font-size:.8rem;color:var(--sub);">지금 배틀 가능한 인원이 없습니다.</div>';return;}
   box.innerHTML=rows.map(r=>{
     const icons=READY_ICON_ORDER.map(t=>{
       const has=r.owned.has(t);
